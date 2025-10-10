@@ -1,0 +1,18 @@
+# Ignore normalized/enterprise CSVs and reports that may contain user emails
+invitation/normalizers/*.csv
+invitation/normalizers/*_apply.csv
+invitation/normalizers/*_normalized.csv
+invitation/reports/*
+
+# Ignore all enterprise-specific customizations and data
+invitation/customize/
+
+# Python virtual env
+venv/
+
+# Bytecode
+__pycache__/
+*.pyc
+
+# Editor config
+.vscode/
