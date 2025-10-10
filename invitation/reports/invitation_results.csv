@@ -1,0 +1,3 @@
+Mail,Organization,Team,Timestamp,Status,Message
+alex.tester@example.com,ExampleOrg,ExampleTeam,2024-01-01T00:00:00+00:00,success,Invitation created
+casey.retry@example.com,ExampleOrg,ExampleTeam,2024-01-01T00:10:00+00:00,failure,"Unprocessable invitation: Validation Failed; errors=[{'resource': 'OrganizationInvitation', 'code': 'unprocessable', 'field': 'data', 'message': 'A user with this email address is already a part of this organization'}]"
