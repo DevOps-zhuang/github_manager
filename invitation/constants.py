@@ -11,6 +11,7 @@ class StandardColumns:
     MAIL: ClassVar[str] = "Mail"
     ORGANIZATION: ClassVar[str] = "Organization"
     TEAM: ClassVar[str] = "Team"
+    PARENT_TEAM: ClassVar[str] = "ParentTeam"
 
 
 REQUIRED_COLUMNS = (
