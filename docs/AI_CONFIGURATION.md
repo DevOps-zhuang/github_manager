@@ -17,6 +17,17 @@ The tool supports flexible configuration through:
 | Model | `OPENAI_MODEL` | `--model` | `gpt-4o` | The LLM model to use |
 | Base URL | `OPENAI_BASE_URL` | `--base-url` | OpenAI default | API endpoint URL |
 | API Version | `OPENAI_API_VERSION` | `--api-version` | (optional) | API version (Azure OpenAI only) |
+| Enterprise Key | N/A | `--enterprise-key` | (optional) | Organizes files in `invitation/customize/<Enterprise>/` |
+| Output Directory | N/A | `--output-dir` | Auto-determined | Custom output location (overrides enterprise-key path) |
+
+## Enterprise Directory Management
+
+When using `--enterprise-key`, the tool automatically:
+1. Creates `invitation/customize/<Enterprise>/` directory
+2. Copies source CSV to this directory
+3. Saves all outputs (`_clean.csv`, `_report.csv`) in this directory
+
+This aligns with the existing enterprise normalizer convention and keeps enterprise data isolated.
 
 ## Deployment Scenarios
 
@@ -32,12 +43,13 @@ export OPENAI_MODEL=gpt-4o
 
 **Usage:**
 ```bash
-python -m invitation.ai_normalizer_cli input.csv
+python -m invitation.ai_normalizer_cli input.csv --enterprise-key acme
 ```
 
 **Or with CLI arguments:**
 ```bash
 python -m invitation.ai_normalizer_cli input.csv \
+  --enterprise-key acme \
   --api-key sk-... \
   --model gpt-4o
 ```

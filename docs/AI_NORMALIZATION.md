@@ -113,7 +113,10 @@ The tool will:
 python -m invitation.ai_normalizer_cli input.csv [options]
 
 Options:
-  --output-dir DIR       Output directory (default: same as input)
+  --enterprise-key KEY   Enterprise identifier for organizing files in 
+                         invitation/customize/<Enterprise>/ directory
+  --output-dir DIR       Output directory (default: invitation/customize/<Enterprise>/ 
+                         if enterprise-key provided, otherwise same as input)
   --api-key KEY          API key for authentication (default: from OPENAI_API_KEY env)
   --model MODEL          LLM model to use (default: gpt-4o, or OPENAI_MODEL env)
                          Examples: gpt-4o, gpt-4, gpt-4-turbo
@@ -128,12 +131,13 @@ Options:
 
 **Using OpenAI directly:**
 ```bash
-python -m invitation.ai_normalizer_cli input.csv --model gpt-4o
+python -m invitation.ai_normalizer_cli input.csv --enterprise-key acme --model gpt-4o
 ```
 
 **Using GitHub Models (dev/test):**
 ```bash
 python -m invitation.ai_normalizer_cli input.csv \
+  --enterprise-key acme \
   --base-url https://models.inference.ai.azure.com \
   --model gpt-4o
 ```
@@ -141,15 +145,25 @@ python -m invitation.ai_normalizer_cli input.csv \
 **Using Azure OpenAI (production):**
 ```bash
 python -m invitation.ai_normalizer_cli input.csv \
+  --enterprise-key acme \
   --base-url https://YOUR_RESOURCE.openai.azure.com/ \
   --api-version 2024-02-15-preview \
   --model gpt-4o
 ```
 
+### Enterprise Directory Structure
+
+When using `--enterprise-key`, the tool automatically organizes files following the convention:
+- **Input file copied to**: `invitation/customize/<Enterprise>/<original-filename>.csv`
+- **Clean output**: `invitation/customize/<Enterprise>/<original-filename>_clean.csv`
+- **Report output**: `invitation/customize/<Enterprise>/<original-filename>_report.csv`
+
+This structure aligns with the existing enterprise normalizer convention and keeps all enterprise-specific data organized.
+
 ### Example Session
 
 ```
-$ python -m invitation.ai_normalizer_cli data/users.csv
+$ python -m invitation.ai_normalizer_cli data/users.csv --enterprise-key acme
 
 Analyzing input file: data/users.csv
 
@@ -171,8 +185,9 @@ TRANSFORMATION RULES INPUT
 ============================================================
 Describe the transformations you want to apply.
 Examples:
-  - "Rename EmailAddress to Mail, OrgName to Organization"
+  - "Rename EmailAddress to Mail, Department to Team"
   - "Filter rows where Status equals Active"
+  - "Set default Organization to my-company"
   ...
 ============================================================
 
@@ -181,6 +196,9 @@ Added rule 1: Rename EmailAddress to Mail and Department to Team
 
 Transformation: Filter rows where Status equals Active
 Added rule 2: Filter rows where Status equals Active
+
+Transformation: Set default Organization to acme-corp
+Added rule 3: Set default Organization to acme-corp
 
 Transformation: done
 
@@ -245,13 +263,16 @@ Output rows: 75
 Rename columns to match standard schema:
 ```
 "Rename EmailAddress to Mail"
-"Map OrgName to Organization and TeamName to Team"
+"Rename Department to Team and EmailAddress to Mail"
 ```
+
+**Note**: The AI will detect if you reference a column that doesn't exist in your CSV and ask for clarification. For example, if you say "Rename OrgName to Organization" but there's no "OrgName" column, it will ask which actual column you meant.
 
 ### 2. Default Values
 Fill empty cells with default values:
 ```
 "Set default value for Team to DefaultTeam"
+"Set default Organization to MyCompany"
 "Fill empty Organization with UnknownOrg"
 ```
 

@@ -155,7 +155,13 @@ Rule types:
 - merge: Combine columns (source_columns, target_column, delimiter)
 - split: Split column into multiple (source_column, target_columns, delimiter)
 
-If the request is unclear or conflicting, include clarification questions.
+IMPORTANT VALIDATION RULES:
+1. If the user references a column that does NOT exist in the CSV columns list, add a clarification question asking which actual column they meant.
+2. For example, if user says "Rename OrgName to Organization" but "OrgName" is not in the columns, ask: "The column 'OrgName' does not exist. Did you mean one of these: [list actual column names]?"
+3. Always verify that source columns exist before creating mapping/filter/merge/split rules.
+4. If multiple columns are missing or the instruction is unclear, ask for clarification instead of guessing.
+
+If the request is unclear, references non-existent columns, or is conflicting, include clarification questions.
 Return ONLY valid JSON, no explanations."""
 
     def _parse_llm_response(

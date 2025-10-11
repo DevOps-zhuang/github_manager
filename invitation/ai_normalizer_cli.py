@@ -38,9 +38,9 @@ def collect_transformation_rules(service: AINormalizationService, columns: list[
     print("=" * 60)
     print("Describe the transformations you want to apply.")
     print("Examples:")
-    print('  - "Rename EmailAddress to Mail, OrgName to Organization"')
+    print('  - "Rename EmailAddress to Mail, Department to Team"')
     print('  - "Filter rows where Status equals Active"')
-    print('  - "Set default value for Team column to DefaultTeam"')
+    print('  - "Set default value for Organization to MyCompany"')
     print('  - "Merge FirstName and LastName into FullName with space"')
     print('  - "Split FullAddress into Street, City, State by comma"')
     print("\nType your transformation rules (or 'done' when finished):")
@@ -127,10 +127,17 @@ def main(argv: Sequence[str] | None = None) -> None:
         help="Path to input CSV file",
     )
     parser.add_argument(
+        "--enterprise-key",
+        type=str,
+        default=None,
+        help="Enterprise identifier for organizing files in invitation/customize/<Enterprise>/ directory",
+    )
+    parser.add_argument(
         "--output-dir",
         type=Path,
         default=None,
-        help="Output directory for generated files (default: same as input directory)",
+        help="Output directory for generated files (default: invitation/customize/<Enterprise>/ if enterprise-key provided, "
+             "otherwise same as input directory)",
     )
     parser.add_argument(
         "--api-key",
@@ -171,9 +178,27 @@ def main(argv: Sequence[str] | None = None) -> None:
         print(f"Error: Input file not found: {args.input}", file=sys.stderr)
         sys.exit(1)
 
-    # Setup output paths
-    output_dir = args.output_dir or args.input.parent
+    # Determine output directory based on enterprise-key
+    if args.output_dir:
+        output_dir = args.output_dir
+    elif args.enterprise_key:
+        # Use enterprise-specific directory structure
+        enterprise_name = args.enterprise_key.capitalize()
+        output_dir = Path("invitation") / "customize" / enterprise_name
+        print(f"Using enterprise directory: {output_dir}")
+    else:
+        # Default to same directory as input
+        output_dir = args.input.parent
+    
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Copy source file to enterprise directory if using enterprise-key
+    if args.enterprise_key and not args.output_dir:
+        source_copy_path = output_dir / args.input.name
+        if source_copy_path != args.input:
+            import shutil
+            shutil.copy2(args.input, source_copy_path)
+            print(f"Copied source file to: {source_copy_path}")
 
     base_name = args.input.stem
     clean_path = output_dir / f"{base_name}_clean.csv"
