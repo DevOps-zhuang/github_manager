@@ -24,4 +24,7 @@ __pycache__/
 # Test artifacts
 .pytest_cache/
 *.log
+*test_*
+demo_apply.csv
+
 
