@@ -63,14 +63,33 @@ invitation/
    pip install -r requirements.txt
    ```
 
-2. Set up OpenAI API key:
+2. Configure API settings:
+
+   **Option A: Environment variables** (recommended)
    ```bash
    export OPENAI_API_KEY=your-api-key-here
+   export OPENAI_MODEL=gpt-4o
    ```
 
-   Or use `.env` file:
+   **Option B: Using `.env` file**
    ```
    OPENAI_API_KEY=your-api-key-here
+   OPENAI_MODEL=gpt-4o
+   ```
+
+   **For GitHub Models (dev/test):**
+   ```bash
+   export OPENAI_API_KEY=your-github-models-token
+   export OPENAI_BASE_URL=https://models.inference.ai.azure.com
+   export OPENAI_MODEL=gpt-4o
+   ```
+
+   **For Azure OpenAI (production):**
+   ```bash
+   export OPENAI_API_KEY=your-azure-key
+   export OPENAI_BASE_URL=https://YOUR_RESOURCE.openai.azure.com/
+   export OPENAI_API_VERSION=2024-02-15-preview
+   export OPENAI_MODEL=gpt-4o
    ```
 
 ## Usage
@@ -94,10 +113,37 @@ The tool will:
 python -m invitation.ai_normalizer_cli input.csv [options]
 
 Options:
-  --output-dir DIR      Output directory (default: same as input)
-  --api-key KEY         OpenAI API key (default: from OPENAI_API_KEY env)
-  --model MODEL         LLM model to use (default: gpt-4)
-  --non-interactive     Skip confirmations (not recommended)
+  --output-dir DIR       Output directory (default: same as input)
+  --api-key KEY          API key for authentication (default: from OPENAI_API_KEY env)
+  --model MODEL          LLM model to use (default: gpt-4o, or OPENAI_MODEL env)
+                         Examples: gpt-4o, gpt-4, gpt-4-turbo
+  --base-url URL         API endpoint URL (default: from OPENAI_BASE_URL env)
+                         Examples: https://models.inference.ai.azure.com (GitHub Models)
+                                  https://YOUR_RESOURCE.openai.azure.com/ (Azure OpenAI)
+  --api-version VERSION  API version for Azure OpenAI (default: from OPENAI_API_VERSION env)
+  --non-interactive      Skip confirmations (not recommended)
+```
+
+### Examples with Different Providers
+
+**Using OpenAI directly:**
+```bash
+python -m invitation.ai_normalizer_cli input.csv --model gpt-4o
+```
+
+**Using GitHub Models (dev/test):**
+```bash
+python -m invitation.ai_normalizer_cli input.csv \
+  --base-url https://models.inference.ai.azure.com \
+  --model gpt-4o
+```
+
+**Using Azure OpenAI (production):**
+```bash
+python -m invitation.ai_normalizer_cli input.csv \
+  --base-url https://YOUR_RESOURCE.openai.azure.com/ \
+  --api-version 2024-02-15-preview \
+  --model gpt-4o
 ```
 
 ### Example Session

@@ -144,6 +144,38 @@ def transform_data(df: pd.DataFrame) -> pd.DataFrame:
     assert report_path.exists()
 
 
+def test_llm_service_configuration():
+    """Test LLM service initialization with different configurations."""
+    # Test default configuration
+    service1 = LLMService(api_key="test-key")
+    assert service1.api_key == "test-key"
+    assert service1.model == "gpt-4o"
+    assert service1.base_url is None
+    assert service1.api_version is None
+
+    # Test with custom model
+    service2 = LLMService(api_key="test-key", model="gpt-4-turbo")
+    assert service2.model == "gpt-4-turbo"
+
+    # Test with custom base URL (GitHub Models)
+    service3 = LLMService(
+        api_key="test-key",
+        base_url="https://models.inference.ai.azure.com",
+        model="gpt-4o",
+    )
+    assert service3.base_url == "https://models.inference.ai.azure.com"
+
+    # Test with Azure OpenAI configuration
+    service4 = LLMService(
+        api_key="test-key",
+        base_url="https://myresource.openai.azure.com/",
+        api_version="2024-02-15-preview",
+        model="gpt-4o",
+    )
+    assert service4.base_url == "https://myresource.openai.azure.com/"
+    assert service4.api_version == "2024-02-15-preview"
+
+
 def test_llm_service_parse_json_response():
     """Test parsing LLM JSON response."""
     service = LLMService(api_key="test-key")

@@ -34,20 +34,55 @@ class TransformationResult:
 
 
 class LLMService:
-    """Abstraction layer for LLM interactions."""
+    """Abstraction layer for LLM interactions.
+    
+    Supports multiple LLM providers:
+    - OpenAI (default)
+    - GitHub Models (for dev/test)
+    - Azure OpenAI (for production)
+    """
 
-    def __init__(self, api_key: str | None = None, model: str = "gpt-4"):
-        """Initialize LLM service with API key and model selection."""
+    def __init__(
+        self,
+        api_key: str | None = None,
+        model: str | None = None,
+        base_url: str | None = None,
+        api_version: str | None = None,
+    ):
+        """Initialize LLM service with flexible configuration.
+        
+        Args:
+            api_key: API key for authentication. Falls back to OPENAI_API_KEY env var.
+            model: Model name (e.g., 'gpt-4o', 'gpt-4'). Falls back to OPENAI_MODEL env var or 'gpt-4o'.
+            base_url: API endpoint URL. Falls back to OPENAI_BASE_URL env var.
+                     Examples:
+                     - GitHub Models: https://models.inference.ai.azure.com
+                     - Azure OpenAI: https://YOUR_RESOURCE.openai.azure.com/
+            api_version: API version (for Azure OpenAI). Falls back to OPENAI_API_VERSION env var.
+        """
         self.api_key = api_key or os.environ.get("OPENAI_API_KEY")
-        self.model = model
+        self.model = model or os.environ.get("OPENAI_MODEL", "gpt-4o")
+        self.base_url = base_url or os.environ.get("OPENAI_BASE_URL")
+        self.api_version = api_version or os.environ.get("OPENAI_API_VERSION")
         self._client = None
 
     def _get_client(self):
-        """Lazy initialization of OpenAI client."""
+        """Lazy initialization of OpenAI client with configurable endpoint."""
         if self._client is None:
             try:
                 import openai
-                self._client = openai.OpenAI(api_key=self.api_key)
+                
+                # Build client configuration
+                client_kwargs = {"api_key": self.api_key}
+                
+                if self.base_url:
+                    client_kwargs["base_url"] = self.base_url
+                
+                if self.api_version:
+                    # Azure OpenAI uses api_version parameter
+                    client_kwargs["api_version"] = self.api_version
+                
+                self._client = openai.OpenAI(**client_kwargs)
             except ImportError:
                 raise ImportError(
                     "OpenAI package not installed. Install it with: pip install openai"

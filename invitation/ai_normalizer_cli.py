@@ -136,13 +136,27 @@ def main(argv: Sequence[str] | None = None) -> None:
         "--api-key",
         type=str,
         default=None,
-        help="OpenAI API key (can also use OPENAI_API_KEY env var)",
+        help="API key for authentication (can also use OPENAI_API_KEY env var)",
     )
     parser.add_argument(
         "--model",
         type=str,
-        default="gpt-4",
-        help="LLM model to use (default: gpt-4)",
+        default=None,
+        help="LLM model to use (default: gpt-4o, or OPENAI_MODEL env var). Examples: gpt-4o, gpt-4, gpt-4-turbo",
+    )
+    parser.add_argument(
+        "--base-url",
+        type=str,
+        default=None,
+        help="API endpoint URL (can also use OPENAI_BASE_URL env var). "
+             "Examples: https://models.inference.ai.azure.com (GitHub Models), "
+             "https://YOUR_RESOURCE.openai.azure.com/ (Azure OpenAI)",
+    )
+    parser.add_argument(
+        "--api-version",
+        type=str,
+        default=None,
+        help="API version for Azure OpenAI (can also use OPENAI_API_VERSION env var)",
     )
     parser.add_argument(
         "--non-interactive",
@@ -167,7 +181,12 @@ def main(argv: Sequence[str] | None = None) -> None:
 
     # Initialize services
     try:
-        llm_service = LLMService(api_key=args.api_key, model=args.model)
+        llm_service = LLMService(
+            api_key=args.api_key,
+            model=args.model,
+            base_url=args.base_url,
+            api_version=args.api_version,
+        )
         service = AINormalizationService(llm_service=llm_service)
     except Exception as e:
         print(f"Error initializing AI service: {e}", file=sys.stderr)

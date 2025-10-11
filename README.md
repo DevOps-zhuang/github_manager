@@ -33,7 +33,11 @@ The AI will:
 
 See [docs/AI_NORMALIZATION.md](docs/AI_NORMALIZATION.md) for detailed guide and examples.
 
-**Requirements:** Set `OPENAI_API_KEY` environment variable or use `--api-key` option.
+**Configuration:**
+- Set `OPENAI_API_KEY` and optionally `OPENAI_MODEL` (default: gpt-4o)
+- For GitHub Models: Set `OPENAI_BASE_URL=https://models.inference.ai.azure.com`
+- For Azure OpenAI: Set `OPENAI_BASE_URL` and `OPENAI_API_VERSION`
+- See [docs/AI_CONFIGURATION.md](docs/AI_CONFIGURATION.md) for complete configuration guide
 
 ---
 
