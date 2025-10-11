@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 from typing import Sequence
@@ -31,7 +32,9 @@ def display_csv_analysis(analysis: dict) -> None:
     print("=" * 60 + "\n")
 
 
-def collect_transformation_rules(service: AINormalizationService, columns: list[str]) -> list:
+def collect_transformation_rules(
+    service: AINormalizationService, columns: list[str]
+) -> list | None:
     """Interactively collect transformation rules from user."""
     print("\n" + "=" * 60)
     print("TRANSFORMATION RULES INPUT")
@@ -46,49 +49,89 @@ def collect_transformation_rules(service: AINormalizationService, columns: list[
     print("\nType your transformation rules (or 'done' when finished):")
     print("=" * 60 + "\n")
 
-    all_rules = []
-    rule_descriptions = []
+    rule_descriptions: list[str] = []
+    first_pass = True
 
     while True:
-        user_input = input("Transformation: ").strip()
-        if not user_input or user_input.lower() == "done":
-            break
+        if not first_pass:
+            print("\nAdd more instructions (or type 'done' to continue, 'cancel' to abort):")
+        first_pass = False
 
-        rule_descriptions.append(user_input)
-        print(f"Added rule {len(rule_descriptions)}: {user_input}")
+        while True:
+            user_input = input("Transformation: ").strip()
+            if not user_input:
+                break
+            if user_input.lower() == "done":
+                break
+            if user_input.lower() == "cancel":
+                print("Transformation session cancelled by user.")
+                return None
 
-    if not rule_descriptions:
-        print("No transformation rules provided. Exiting.")
-        return []
+            rule_descriptions.append(user_input)
+            print(f"Added rule {len(rule_descriptions)}: {user_input}")
 
-    # Combine all rules and parse
-    combined_input = " AND ".join(rule_descriptions)
-    print("\nParsing transformation rules...")
+        if not rule_descriptions:
+            response = input("No rules entered. Cancel session? (yes to cancel / no to retry): ").strip().lower()
+            if response in {"yes", "y", "cancel"}:
+                print("Transformation session cancelled by user.")
+                return None
+            continue
 
-    rules, clarifications = service.parse_transformation_rules(combined_input, columns)
+        clarification_notes: list[str] = []
 
-    # Handle clarifications
-    if clarifications:
-        print("\n" + "⚠" * 30)
-        print("CLARIFICATION NEEDED")
-        print("⚠" * 30)
-        print("The following aspects of your request need clarification:\n")
-        for i, question in enumerate(clarifications, 1):
-            print(f"{i}. {question}")
-        print("\nPlease refine your transformation rules and try again.")
-        return []
+        while True:
+            combined_segments = rule_descriptions + clarification_notes
+            combined_input = " AND ".join(combined_segments)
+            print("\nParsing transformation rules...")
+            rules, clarifications = service.parse_transformation_rules(combined_input, columns)
 
-    # Display parsed rules
-    if rules:
-        print("\n" + "✓" * 30)
-        print("PARSED TRANSFORMATION RULES")
-        print("✓" * 30)
-        for i, rule in enumerate(rules, 1):
-            print(f"{i}. [{rule.rule_type}] {rule.description}")
-            print(f"   Parameters: {rule.parameters}")
-        print("✓" * 30 + "\n")
+            if clarifications:
+                print("\n" + "⚠" * 30)
+                print("CLARIFICATION NEEDED")
+                print("⚠" * 30)
+                print("The following aspects of your request need clarification:\n")
+                for i, question in enumerate(clarifications, 1):
+                    print(f"{i}. {question}")
 
-    return rules
+                new_notes: list[str] = []
+                for idx, question in enumerate(clarifications, 1):
+                    answer = input(
+                        f"Clarification {idx} response (type 'cancel' to abort, leave blank to skip): "
+                    ).strip()
+                    if answer.lower() == "cancel":
+                        print("Transformation session cancelled by user.")
+                        return None
+                    if answer:
+                        new_notes.append(f"{question} -> {answer}")
+
+                if not new_notes:
+                    retry = input(
+                        "No clarifications provided. Add more instructions manually? (yes/no): "
+                    ).strip().lower()
+                    if retry in {"yes", "y"}:
+                        break  # exit clarification loop, return to outer input loop for more rules
+                    reconsider = input(
+                        "Would you like to cancel the session? (yes/no): "
+                    ).strip().lower()
+                    if reconsider in {"yes", "y", "cancel"}:
+                        print("Transformation session cancelled by user.")
+                        return None
+                    print("Retrying clarification collection...")
+                    continue
+
+                clarification_notes.extend(new_notes)
+                continue
+
+            # Clarifications resolved; display parsed rules
+            if rules:
+                print("\n" + "✓" * 30)
+                print("PARSED TRANSFORMATION RULES")
+                print("✓" * 30)
+                for i, rule in enumerate(rules, 1):
+                    print(f"{i}. [{rule.rule_type}] {rule.description}")
+                    print(f"   Parameters: {rule.parameters}")
+                print("✓" * 30 + "\n")
+            return rules
 
 
 def confirm_execution(clean_path: Path, report_path: Path) -> bool:
@@ -114,6 +157,12 @@ def preview_generated_code(code: str) -> bool:
 
     response = input("Execute this code? (yes/no): ").strip().lower()
     return response in ["yes", "y"]
+
+
+def _sanitize_enterprise_key(raw_key: str) -> str:
+    """Normalize enterprise key into a filesystem-friendly name."""
+    cleaned = re.sub(r"[^A-Za-z0-9_-]+", "_", raw_key.strip())
+    return cleaned or "enterprise"
 
 
 def main(argv: Sequence[str] | None = None) -> None:
@@ -174,30 +223,45 @@ def main(argv: Sequence[str] | None = None) -> None:
 
     args = parser.parse_args(argv)
 
+    if not args.enterprise_key and args.non_interactive:
+        print("Error: --enterprise-key is required in non-interactive mode.", file=sys.stderr)
+        sys.exit(1)
+
+    if not args.enterprise_key:
+        entered_key = input("Enterprise key (required): ").strip()
+        if not entered_key:
+            print("Error: enterprise key is required to continue.", file=sys.stderr)
+            sys.exit(1)
+        args.enterprise_key = entered_key
+
     # Validate input file
     if not args.input.exists():
         print(f"Error: Input file not found: {args.input}", file=sys.stderr)
         sys.exit(1)
 
     # Determine output directory based on enterprise-key
+    enterprise_dir: Path | None = None
+    if args.enterprise_key:
+        sanitized = _sanitize_enterprise_key(args.enterprise_key)
+        enterprise_dir = Path("invitation") / "customize" / sanitized
+    
     if args.output_dir:
         output_dir = args.output_dir
-    elif args.enterprise_key:
-        # Use enterprise-specific directory structure
-        enterprise_name = args.enterprise_key.capitalize()
-        output_dir = Path("invitation") / "customize" / enterprise_name
+    elif enterprise_dir is not None:
+        output_dir = enterprise_dir
         print(f"Using enterprise directory: {output_dir}")
     else:
-        # Default to same directory as input
         output_dir = args.input.parent
-    
+
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Copy source file to enterprise directory if using enterprise-key
-    if args.enterprise_key and not args.output_dir:
-        source_copy_path = output_dir / args.input.name
-        if source_copy_path != args.input:
+    if enterprise_dir is not None:
+        enterprise_dir.mkdir(parents=True, exist_ok=True)
+        source_copy_path = enterprise_dir / args.input.name
+        if source_copy_path.resolve() != args.input.resolve():
             import shutil
+
             shutil.copy2(args.input, source_copy_path)
             print(f"Copied source file to: {source_copy_path}")
 
@@ -235,6 +299,9 @@ def main(argv: Sequence[str] | None = None) -> None:
 
     # Collect transformation rules
     rules = collect_transformation_rules(service, analysis["columns"])
+    if rules is None:
+        print("Transformation cancelled by user.")
+        sys.exit(0)
     if not rules:
         print("No valid transformation rules. Exiting.")
         sys.exit(1)
@@ -258,6 +325,14 @@ def main(argv: Sequence[str] | None = None) -> None:
         if not preview_generated_code(code):
             print("Transformation cancelled.")
             sys.exit(0)
+
+    if enterprise_dir is not None:
+        generated_code_path = enterprise_dir / "normalizer.py"
+        try:
+            generated_code_path.write_text(code, encoding="utf-8")
+            print(f"Saved generated code to: {generated_code_path}")
+        except Exception as e:
+            print(f"Warning: failed to write generated code file: {e}", file=sys.stderr)
 
     # Execute transformation
     print("\nExecuting transformation...")

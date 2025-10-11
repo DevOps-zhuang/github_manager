@@ -11,6 +11,15 @@ from typing import Any, Mapping, Sequence
 
 import pandas as pd
 
+try:  # pragma: no cover - optional dependency
+    from dotenv import find_dotenv, load_dotenv
+except ImportError:  # pragma: no cover
+    load_dotenv = None
+else:  # pragma: no cover - executed at import time
+    dotenv_path = find_dotenv()
+    if dotenv_path:
+        load_dotenv(dotenv_path=dotenv_path, override=False)
+
 
 @dataclass
 class TransformationRule:
@@ -153,6 +162,8 @@ class LLMService:
             )
 
             result_text = response.choices[0].message.content
+            if not result_text:
+                return [], ["LLM response was empty."]
             return self._parse_llm_response(result_text)
 
         except Exception as e:
@@ -222,6 +233,8 @@ class LLMService:
             )
 
             code = response.choices[0].message.content
+            if not code:
+                raise RuntimeError("LLM returned an empty response when generating code")
 
             # Extract code from markdown blocks if present
             code_match = re.search(r"```python\s*(.*?)\s*```", code, re.DOTALL)
@@ -316,8 +329,9 @@ class AINormalizationService:
         output_report_path: Path | None = None,
     ) -> TransformationResult:
         """Execute transformation rules on input CSV."""
-        errors = []
-        warnings = []
+        errors: list[str] = []
+        warnings: list[str] = []
+        code: str | None = None
 
         try:
             # Load input data
@@ -328,6 +342,16 @@ class AINormalizationService:
             code = self.llm_service.generate_transformation_code(
                 rules, df.columns.tolist()
             )
+            if not isinstance(code, str):
+                errors.append("LLM did not return transformation code")
+                return TransformationResult(
+                    success=False,
+                    clean_data=None,
+                    report_data=None,
+                    errors=errors,
+                    warnings=warnings,
+                    generated_code=None,
+                )
 
             # Validate code
             is_valid, validation_errors = self.validate_transformation_code(code)
@@ -360,6 +384,16 @@ class AINormalizationService:
 
             # Apply transformation
             transformed_df = transform_func(df)
+            if not isinstance(transformed_df, pd.DataFrame):
+                errors.append("transform_data must return a pandas DataFrame")
+                return TransformationResult(
+                    success=False,
+                    clean_data=None,
+                    report_data=None,
+                    errors=errors,
+                    warnings=warnings,
+                    generated_code=code,
+                )
 
             # Generate report
             report_data = self._generate_report(
@@ -392,7 +426,7 @@ class AINormalizationService:
                 report_data=None,
                 errors=errors,
                 warnings=warnings,
-                generated_code=code if "code" in locals() else None,
+                generated_code=code,
             )
 
     def _generate_report(
