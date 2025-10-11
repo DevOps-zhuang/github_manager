@@ -64,29 +64,32 @@ GitHub Models provides free access to various LLMs for development and testing.
 
 **Environment variables:**
 ```bash
-export OPENAI_API_KEY=github_pat_...
-export OPENAI_BASE_URL=https://models.inference.ai.azure.com
-export OPENAI_MODEL=gpt-4o
+export GITHUB_TOKEN=github_pat_...
+export OPENAI_BASE_URL=https://models.github.ai/inference
+export OPENAI_MODEL=openai/gpt-4o
 ```
 
 **Usage:**
 ```bash
-python -m invitation.ai_normalizer_cli input.csv
+python -m invitation.ai_normalizer_cli input.csv --enterprise-key acme
 ```
 
 **Or with CLI arguments:**
 ```bash
 python -m invitation.ai_normalizer_cli input.csv \
+  --enterprise-key acme \
   --api-key github_pat_... \
-  --base-url https://models.inference.ai.azure.com \
-  --model gpt-4o
+  --base-url https://models.github.ai/inference \
+  --model openai/gpt-4o
 ```
 
 **Available Models on GitHub Models:**
-- `gpt-4o`
-- `gpt-4o-mini`
-- `gpt-4-turbo`
-- And others - check [GitHub Models documentation](https://github.com/marketplace/models)
+- `openai/gpt-4o`
+- `openai/gpt-4o-mini`
+- `openai/gpt-4-turbo`
+- And others - check [GitHub Models Marketplace](https://github.com/marketplace/models)
+
+**Note:** GitHub Models requires model names in format `provider/model-name` (e.g., `openai/gpt-4o`).
 
 ### 3. Azure OpenAI (Production)
 
@@ -97,32 +100,31 @@ Azure OpenAI is recommended for production deployments due to enterprise-grade s
 2. Deploy the desired model (e.g., gpt-4o)
 3. Get your API key and endpoint URL
 
-**Environment variables:**
+**Environment variables (using Response API - recommended):**
 ```bash
 export OPENAI_API_KEY=your-azure-key
-export OPENAI_BASE_URL=https://YOUR_RESOURCE.openai.azure.com/
-export OPENAI_API_VERSION=2024-02-15-preview
+export OPENAI_BASE_URL=https://open-direct.openai.azure.com/openai/v1/
 export OPENAI_MODEL=gpt-4o
 ```
 
 **Usage:**
 ```bash
-python -m invitation.ai_normalizer_cli input.csv
+python -m invitation.ai_normalizer_cli input.csv --enterprise-key acme
 ```
 
 **Or with CLI arguments:**
 ```bash
 python -m invitation.ai_normalizer_cli input.csv \
+  --enterprise-key acme \
   --api-key your-azure-key \
-  --base-url https://YOUR_RESOURCE.openai.azure.com/ \
-  --api-version 2024-02-15-preview \
+  --base-url https://open-direct.openai.azure.com/openai/v1/ \
   --model gpt-4o
 ```
 
-**Note:** For Azure OpenAI:
-- Replace `YOUR_RESOURCE` with your actual Azure OpenAI resource name
-- The model name in `--model` should match the deployment name in Azure
-- API version varies; check [Azure OpenAI documentation](https://learn.microsoft.com/en-us/azure/ai-services/openai/reference) for current versions
+**Note:** 
+- For Azure OpenAI, the newer **Response API** (`https://open-direct.openai.azure.com/openai/v1/`) is recommended and does not require `api_version`
+- The model name should match your deployment name in Azure
+- Legacy Azure OpenAI endpoints with `api_version` are still supported for backward compatibility
 
 ## Using .env File
 

@@ -1,0 +1,22 @@
+Given the following transformation rules, generate Python pandas code to transform the DataFrame.
+
+Available columns: {column_names}
+
+Transformation rules:
+{rules_description}
+
+Generate a Python function with this exact signature:
+```python
+def transform_data(df: pd.DataFrame) -> pd.DataFrame:
+    # Your transformation code here
+    return result
+```
+
+Requirements:
+1. Use pandas operations only (no external libraries except pandas)
+2. Return a transformed DataFrame
+3. Handle edge cases (e.g., missing columns, empty values)
+4. Use efficient pandas methods
+5. Add comments explaining each transformation step
+
+Return ONLY the Python code, no explanations or markdown formatting.

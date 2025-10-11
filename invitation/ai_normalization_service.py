@@ -38,8 +38,8 @@ class LLMService:
     
     Supports multiple LLM providers:
     - OpenAI (default)
-    - GitHub Models (for dev/test)
-    - Azure OpenAI (for production)
+    - GitHub Models (for dev/test) - endpoint: https://models.github.ai/inference
+    - Azure OpenAI (for production) - using response API (no api_version needed)
     """
 
     def __init__(
@@ -52,19 +52,41 @@ class LLMService:
         """Initialize LLM service with flexible configuration.
         
         Args:
-            api_key: API key for authentication. Falls back to OPENAI_API_KEY env var.
-            model: Model name (e.g., 'gpt-4o', 'gpt-4'). Falls back to OPENAI_MODEL env var or 'gpt-4o'.
+            api_key: API key for authentication. Falls back to OPENAI_API_KEY or GITHUB_TOKEN env var.
+            model: Model name. Falls back to OPENAI_MODEL env var or 'gpt-4o'.
+                   For GitHub Models, use format 'openai/gpt-4o'.
+                   For OpenAI/Azure, use 'gpt-4o'.
             base_url: API endpoint URL. Falls back to OPENAI_BASE_URL env var.
                      Examples:
-                     - GitHub Models: https://models.inference.ai.azure.com
-                     - Azure OpenAI: https://YOUR_RESOURCE.openai.azure.com/
-            api_version: API version (for Azure OpenAI). Falls back to OPENAI_API_VERSION env var.
+                     - GitHub Models: https://models.github.ai/inference
+                     - Azure OpenAI: https://open-direct.openai.azure.com/openai/v1/
+            api_version: API version (legacy, not needed for Azure response API). Falls back to OPENAI_API_VERSION env var.
         """
-        self.api_key = api_key or os.environ.get("OPENAI_API_KEY")
+        # Try GITHUB_TOKEN if OPENAI_API_KEY not set (for GitHub Models)
+        self.api_key = api_key or os.environ.get("OPENAI_API_KEY") or os.environ.get("GITHUB_TOKEN")
         self.model = model or os.environ.get("OPENAI_MODEL", "gpt-4o")
         self.base_url = base_url or os.environ.get("OPENAI_BASE_URL")
         self.api_version = api_version or os.environ.get("OPENAI_API_VERSION")
         self._client = None
+        self._prompts_dir = Path(__file__).parent / "prompts"
+
+    def _load_prompt_template(self, template_name: str) -> str:
+        """Load a prompt template from the prompts directory.
+        
+        Args:
+            template_name: Name of the template file (without .txt extension)
+            
+        Returns:
+            Template content as string
+        """
+        template_path = self._prompts_dir / f"{template_name}.txt"
+        try:
+            return template_path.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            raise FileNotFoundError(
+                f"Prompt template not found: {template_path}. "
+                f"Please ensure prompts are available in {self._prompts_dir}"
+            )
 
     def _get_client(self):
         """Lazy initialization of OpenAI client with configurable endpoint."""
@@ -78,8 +100,9 @@ class LLMService:
                 if self.base_url:
                     client_kwargs["base_url"] = self.base_url
                 
+                # Note: api_version is legacy and not needed for Azure response API
+                # Only include if explicitly set for backward compatibility
                 if self.api_version:
-                    # Azure OpenAI uses api_version parameter
                     client_kwargs["api_version"] = self.api_version
                 
                 self._client = openai.OpenAI(**client_kwargs)
@@ -123,46 +146,11 @@ class LLMService:
 
     def _build_parsing_prompt(self, user_input: str, column_names: Sequence[str]) -> str:
         """Build prompt for parsing user transformation rules."""
-        return f"""Given the following CSV columns: {', '.join(column_names)}
-
-User request: "{user_input}"
-
-Parse this into structured transformation rules. Return JSON in this format:
-{{
-  "rules": [
-    {{
-      "description": "Human-readable description",
-      "rule_type": "mapping|default|filter|merge|split",
-      "parameters": {{
-        "source_column": "ColumnName",
-        "target_column": "NewName",
-        "default_value": "value",
-        "condition": "expression",
-        "delimiter": ","
-      }}
-    }}
-  ],
-  "clarifications": [
-    "Question 1 if ambiguous",
-    "Question 2 if conflicting"
-  ]
-}}
-
-Rule types:
-- mapping: Rename column (source_column -> target_column)
-- default: Set default value for empty cells (column, default_value)
-- filter: Keep only rows matching condition (column, condition)
-- merge: Combine columns (source_columns, target_column, delimiter)
-- split: Split column into multiple (source_column, target_columns, delimiter)
-
-IMPORTANT VALIDATION RULES:
-1. If the user references a column that does NOT exist in the CSV columns list, add a clarification question asking which actual column they meant.
-2. For example, if user says "Rename OrgName to Organization" but "OrgName" is not in the columns, ask: "The column 'OrgName' does not exist. Did you mean one of these: [list actual column names]?"
-3. Always verify that source columns exist before creating mapping/filter/merge/split rules.
-4. If multiple columns are missing or the instruction is unclear, ask for clarification instead of guessing.
-
-If the request is unclear, references non-existent columns, or is conflicting, include clarification questions.
-Return ONLY valid JSON, no explanations."""
+        template = self._load_prompt_template("parse_rules")
+        return template.format(
+            column_names=', '.join(column_names),
+            user_input=user_input
+        )
 
     def _parse_llm_response(
         self, response_text: str
@@ -241,33 +229,12 @@ Return ONLY valid JSON, no explanations."""
                 for i, rule in enumerate(rules)
             ]
         )
-
-        return f"""Generate pandas transformation code for the following rules:
-
-Available columns: {', '.join(column_names)}
-
-Transformation rules:
-{rules_description}
-
-Requirements:
-1. Define a function: def transform_data(df: pd.DataFrame) -> pd.DataFrame
-2. The function should take a DataFrame and return the transformed DataFrame
-3. Use only safe pandas operations (no eval, exec, or system calls)
-4. Handle missing values gracefully
-5. Add comments explaining each transformation
-6. Preserve all original columns unless explicitly mapped/renamed
-7. Return ONLY the function code, no explanations or markdown
-
-Example structure:
-def transform_data(df: pd.DataFrame) -> pd.DataFrame:
-    # Make a copy to avoid modifying original
-    result = df.copy()
-    
-    # Apply transformations here
-    ...
-    
-    return result
-"""
+        
+        template = self._load_prompt_template("generate_code")
+        return template.format(
+            column_names=', '.join(column_names),
+            rules_description=rules_description
+        )
 
 
 class AINormalizationService:

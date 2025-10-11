@@ -143,27 +143,28 @@ def main(argv: Sequence[str] | None = None) -> None:
         "--api-key",
         type=str,
         default=None,
-        help="API key for authentication (can also use OPENAI_API_KEY env var)",
+        help="API key for authentication (can also use OPENAI_API_KEY or GITHUB_TOKEN env var)",
     )
     parser.add_argument(
         "--model",
         type=str,
         default=None,
-        help="LLM model to use (default: gpt-4o, or OPENAI_MODEL env var). Examples: gpt-4o, gpt-4, gpt-4-turbo",
+        help="LLM model to use (default: gpt-4o, or OPENAI_MODEL env var). "
+             "Examples: gpt-4o, gpt-4-turbo (OpenAI/Azure), openai/gpt-4o (GitHub Models)",
     )
     parser.add_argument(
         "--base-url",
         type=str,
         default=None,
         help="API endpoint URL (can also use OPENAI_BASE_URL env var). "
-             "Examples: https://models.inference.ai.azure.com (GitHub Models), "
-             "https://YOUR_RESOURCE.openai.azure.com/ (Azure OpenAI)",
+             "Examples: https://models.github.ai/inference (GitHub Models), "
+             "https://open-direct.openai.azure.com/openai/v1/ (Azure OpenAI)",
     )
     parser.add_argument(
         "--api-version",
         type=str,
         default=None,
-        help="API version for Azure OpenAI (can also use OPENAI_API_VERSION env var)",
+        help="API version for legacy Azure OpenAI (optional, not needed for Response API)",
     )
     parser.add_argument(
         "--non-interactive",

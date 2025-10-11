@@ -79,16 +79,15 @@ invitation/
 
    **For GitHub Models (dev/test):**
    ```bash
-   export OPENAI_API_KEY=your-github-models-token
-   export OPENAI_BASE_URL=https://models.inference.ai.azure.com
-   export OPENAI_MODEL=gpt-4o
+   export GITHUB_TOKEN=github_pat_...
+   export OPENAI_BASE_URL=https://models.github.ai/inference
+   export OPENAI_MODEL=openai/gpt-4o
    ```
 
-   **For Azure OpenAI (production):**
+   **For Azure OpenAI (production - Response API):**
    ```bash
    export OPENAI_API_KEY=your-azure-key
-   export OPENAI_BASE_URL=https://YOUR_RESOURCE.openai.azure.com/
-   export OPENAI_API_VERSION=2024-02-15-preview
+   export OPENAI_BASE_URL=https://open-direct.openai.azure.com/openai/v1/
    export OPENAI_MODEL=gpt-4o
    ```
 
@@ -138,16 +137,16 @@ python -m invitation.ai_normalizer_cli input.csv --enterprise-key acme --model g
 ```bash
 python -m invitation.ai_normalizer_cli input.csv \
   --enterprise-key acme \
-  --base-url https://models.inference.ai.azure.com \
-  --model gpt-4o
+  --api-key github_pat_... \
+  --base-url https://models.github.ai/inference \
+  --model openai/gpt-4o
 ```
 
-**Using Azure OpenAI (production):**
+**Using Azure OpenAI (production - Response API):**
 ```bash
 python -m invitation.ai_normalizer_cli input.csv \
   --enterprise-key acme \
-  --base-url https://YOUR_RESOURCE.openai.azure.com/ \
-  --api-version 2024-02-15-preview \
+  --base-url https://open-direct.openai.azure.com/openai/v1/ \
   --model gpt-4o
 ```
 
