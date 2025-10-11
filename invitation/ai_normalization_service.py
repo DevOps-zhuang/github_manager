@@ -91,6 +91,20 @@ class LLMService:
     def _get_client(self):
         """Lazy initialization of OpenAI client with configurable endpoint."""
         if self._client is None:
+            # Check if we have an API key
+            if not self.api_key:
+                raise RuntimeError(
+                    "No API key found. Please set one of the following:\n"
+                    "  - OPENAI_API_KEY environment variable (for OpenAI or Azure OpenAI)\n"
+                    "  - GITHUB_TOKEN environment variable (for GitHub Models)\n"
+                    "  - Use --api-key command line argument\n\n"
+                    f"Current configuration:\n"
+                    f"  - OPENAI_API_KEY: {'set' if os.environ.get('OPENAI_API_KEY') else 'not set'}\n"
+                    f"  - GITHUB_TOKEN: {'set' if os.environ.get('GITHUB_TOKEN') else 'not set'}\n"
+                    f"  - base_url: {self.base_url or 'not set'}\n"
+                    f"  - model: {self.model}"
+                )
+            
             try:
                 import openai
                 

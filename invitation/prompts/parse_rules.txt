@@ -36,5 +36,11 @@ IMPORTANT VALIDATION RULES:
 3. Always verify that source columns exist before creating mapping/filter/merge/split rules.
 4. If multiple columns are missing or the instruction is unclear, ask for clarification instead of guessing.
 
-If the request is unclear, references non-existent columns, or is conflicting, include clarification questions.
+REQUIRED OUTPUT COLUMNS CHECK:
+The output CSV must contain these three columns: "Mail", "Organization", and "Team".
+- If the user's transformation does not specify how to create the "Mail" column, ask: "How should the 'Mail' column be created? Which source column contains email addresses?"
+- If the user's transformation does not specify how to create the "Organization" column, ask: "How should the 'Organization' column be set? Should it be a default value (e.g., 'my-org') or mapped from a source column?"
+- If the user's transformation does not specify how to create the "Team" column, ask: "How should the 'Team' column be created? Should it be mapped from a source column or set to a default value?"
+
+If the request is unclear, references non-existent columns, is missing required output columns, or is conflicting, include clarification questions.
 Return ONLY valid JSON, no explanations.

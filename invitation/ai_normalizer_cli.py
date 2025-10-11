@@ -216,7 +216,11 @@ def main(argv: Sequence[str] | None = None) -> None:
         service = AINormalizationService(llm_service=llm_service)
     except Exception as e:
         print(f"Error initializing AI service: {e}", file=sys.stderr)
-        print("\nMake sure to set OPENAI_API_KEY environment variable or use --api-key", file=sys.stderr)
+        print("\nConfiguration help:", file=sys.stderr)
+        print("  - For OpenAI: set OPENAI_API_KEY environment variable", file=sys.stderr)
+        print("  - For GitHub Models: set GITHUB_TOKEN and OPENAI_BASE_URL=https://models.github.ai/inference", file=sys.stderr)
+        print("  - For Azure OpenAI: set OPENAI_API_KEY and OPENAI_BASE_URL", file=sys.stderr)
+        print("  - Or use --api-key command line argument", file=sys.stderr)
         sys.exit(1)
 
     # Analyze input CSV
