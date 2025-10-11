@@ -4,12 +4,38 @@ A small toolset to batch-invite users into GitHub organizations and collect metr
 
 ## What this project does
 
+- **AI-assisted data normalization**: Describe transformations in natural language, let AI generate and execute the code.
 - Read normalized CSVs containing Mail / Organization / Team.
 - Create missing teams in target organizations (when permitted).
 - Invite users into organizations and optionally add them to teams.
 - Produce per-invite reports in CSV format under `invitation/reports/`.
 
 ## Usage
+
+### AI-Assisted Data Normalization (NEW! 🚀)
+
+For users without programming background, use natural language to describe data transformations:
+
+```bash
+python -m invitation.ai_normalizer_cli input.csv
+```
+
+The AI will:
+- Analyze your CSV structure
+- Let you describe transformations in plain English
+- Generate and show transformation code for review
+- Execute safely and produce `_clean.csv` and `_report.csv`
+
+**Example transformations:**
+- "Rename EmailAddress to Mail and Department to Team"
+- "Filter rows where Status equals Active"
+- "Merge FirstName and LastName into FullName with space"
+
+See [docs/AI_NORMALIZATION.md](docs/AI_NORMALIZATION.md) for detailed guide and examples.
+
+**Requirements:** Set `OPENAI_API_KEY` environment variable or use `--api-key` option.
+
+---
 
 ### Basic Invitation Workflow
 

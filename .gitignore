@@ -16,3 +16,12 @@ __pycache__/
 
 # Editor config
 .vscode/
+
+# Environment variables and secrets
+.env
+.env.local
+
+# Test artifacts
+.pytest_cache/
+*.log
+
