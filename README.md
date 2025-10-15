@@ -4,12 +4,44 @@ A small toolset to batch-invite users into GitHub organizations and collect metr
 
 ## What this project does
 
+- **AI-assisted data normalization**: Describe transformations in natural language, let AI generate and execute the code.
 - Read normalized CSVs containing Mail / Organization / Team.
 - Create missing teams in target organizations (when permitted).
 - Invite users into organizations and optionally add them to teams.
 - Produce per-invite reports in CSV format under `invitation/reports/`.
 
 ## Usage
+
+### AI-Assisted Data Normalization (NEW! 🚀)
+
+For users without programming background, use natural language to describe data transformations:
+
+```bash
+python -m invitation.ai_normalizer_cli input.csv
+```
+
+The AI will:
+- Analyze your CSV structure
+- Let you describe transformations in plain English
+- Generate and show transformation code for review
+- Execute safely and produce `_clean.csv` and `_report.csv`
+
+**Example transformations:**
+- "Rename EmailAddress to Mail and Department to Team"
+- "Filter rows where Status equals Active"
+- "Merge FirstName and LastName into FullName with space"
+
+See [docs/AI_NORMALIZATION.md](docs/AI_NORMALIZATION.md) for detailed guide and examples.
+
+**AI 配置（新统一命名）:**
+- 选择供应商：`API_TYPE=openai|github|azure|custom`
+- 基础变量：`API_KEY`, `MODEL_NAME`（默认 `gpt-4o`）
+- 仅当 `API_TYPE=azure` 或 `custom` 时需要：`API_BASE_URL`（Azure 例：`https://<resource>.openai.azure.com/openai/v1/`）
+- 可选：`API_VERSION`（旧版 Azure 接口或指定 preview 时）、`DEFAULT_ORGANIZATION`、`DEFAULT_TEAM_PREFIX`
+- GitHub 邀请专用：`GITHUB_TOKEN`（与 AI 模型调用凭据分离；当 `API_TYPE=github` 且 `API_KEY` 缺失时可回退使用）
+- 详见新增文档：[docs/CONFIGURATION.md](docs/CONFIGURATION.md)
+
+---
 
 ### Basic Invitation Workflow
 
@@ -124,6 +156,19 @@ python scripts/scan_enterprise.py || exit 1
 No hard-coded conditionals are allowed in public modules. The loader derives the path from the key.
 
 See `ENTERPRISE_INTEGRATION.md` for full guidelines.
+
+## AI / 邀请配置快速参考
+
+| API_TYPE | 必填 | 可选 | 默认 | 说明 |
+|----------|------|------|------|------|
+| openai   | API_KEY | MODEL_NAME | MODEL_NAME=gpt-4o | 无需 API_BASE_URL |
+| github   | API_KEY（或回退 GITHUB_TOKEN） | MODEL_NAME | MODEL_NAME=gpt-4o | 内部映射官方 endpoint |
+| azure    | API_KEY, API_BASE_URL | MODEL_NAME, API_VERSION | MODEL_NAME=gpt-4o | 需自填 endpoint |
+| custom   | API_KEY, API_BASE_URL | MODEL_NAME | MODEL_NAME=gpt-4o | 第三方/代理场景 |
+
+优先级：CLI 参数 > 环境变量 > 内置默认。
+
+无效 AI 配置时：AI 标准化 CLI 将友好退出（退出码 0），邀请等非 AI 功能可以继续运行。
 
 ## Important limitations and notes
 

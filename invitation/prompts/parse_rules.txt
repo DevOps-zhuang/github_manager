@@ -1,0 +1,46 @@
+Given the following CSV columns: {column_names}
+
+User request: "{user_input}"
+
+Parse this into structured transformation rules. Return JSON in this format:
+{{
+  "rules": [
+    {{
+      "description": "Human-readable description",
+      "rule_type": "mapping|default|filter|merge|split",
+      "parameters": {{
+        "source_column": "ColumnName",
+        "target_column": "NewName",
+        "default_value": "value",
+        "condition": "expression",
+        "delimiter": ","
+      }}
+    }}
+  ],
+  "clarifications": [
+    "Question 1 if ambiguous",
+    "Question 2 if conflicting"
+  ]
+}}
+
+Rule types:
+- mapping: Rename column (source_column -> target_column)
+- default: Set default value for empty cells (column, default_value)
+- filter: Keep only rows matching condition (column, condition)
+- merge: Combine columns (source_columns, target_column, delimiter)
+- split: Split column into multiple (source_column, target_columns, delimiter)
+
+IMPORTANT VALIDATION RULES:
+1. If the user references a column that does NOT exist in the CSV columns list, add a clarification question asking which actual column they meant.
+2. For example, if user says "Rename OrgName to Organization" but "OrgName" is not in the columns, ask: "The column 'OrgName' does not exist. Did you mean one of these: [list actual column names]?"
+3. Always verify that source columns exist before creating mapping/filter/merge/split rules.
+4. If multiple columns are missing or the instruction is unclear, ask for clarification instead of guessing.
+
+REQUIRED OUTPUT COLUMNS CHECK:
+The output CSV must contain these three columns: "Mail", "Organization", and "Team".
+- If the user's transformation does not specify how to create the "Mail" column, ask: "How should the 'Mail' column be created? Which source column contains email addresses?"
+- If the user's transformation does not specify how to create the "Organization" column, ask: "How should the 'Organization' column be set? Should it be a default value (e.g., 'my-org') or mapped from a source column?"
+- If the user's transformation does not specify how to create the "Team" column, ask: "How should the 'Team' column be created? Should it be mapped from a source column or set to a default value?"
+
+If the request is unclear, references non-existent columns, is missing required output columns, or is conflicting, include clarification questions.
+Return ONLY valid JSON, no explanations.
