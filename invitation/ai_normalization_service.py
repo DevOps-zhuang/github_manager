@@ -403,6 +403,13 @@ class AINormalizationService:
                     generated_code=code,
                 )
 
+            # Reorder columns: Mail, Team, Organization first, then others
+            mandatory_cols = ["Mail", "Team", "Organization"]
+            available_mandatory = [col for col in mandatory_cols if col in transformed_df.columns]
+            other_cols = [col for col in transformed_df.columns if col not in mandatory_cols]
+            ordered_columns = available_mandatory + other_cols
+            clean_df = transformed_df[ordered_columns]
+
             # Generate report
             report_data = self._generate_report(
                 df, transformed_df, rules, original_columns
@@ -411,7 +418,7 @@ class AINormalizationService:
             # Write outputs if paths provided
             if output_clean_path:
                 output_clean_path.parent.mkdir(parents=True, exist_ok=True)
-                transformed_df.to_csv(output_clean_path, index=False, encoding="utf-8")
+                clean_df.to_csv(output_clean_path, index=False, encoding="utf-8")
 
             if output_report_path:
                 output_report_path.parent.mkdir(parents=True, exist_ok=True)
@@ -419,7 +426,7 @@ class AINormalizationService:
 
             return TransformationResult(
                 success=True,
-                clean_data=transformed_df,
+                clean_data=clean_df,
                 report_data=report_data,
                 errors=errors,
                 warnings=warnings,
