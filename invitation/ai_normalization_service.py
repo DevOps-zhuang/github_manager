@@ -61,21 +61,29 @@ class LLMService:
         """Initialize LLM service with flexible configuration.
         
         Args:
-            api_key: API key for authentication. Falls back to OPENAI_API_KEY or GITHUB_TOKEN env var.
-            model: Model name. Falls back to OPENAI_MODEL env var or 'gpt-4o'.
-                   For GitHub Models, use format 'openai/gpt-4o'.
+            api_key: API key for authentication. Falls back to API_KEY or GITHUB_TOKEN env var.
+            model: Model name. Falls back to MODEL_NAME env var or 'gpt-4o'.
+                   For GitHub Models, use format 'gpt-4o' (internal mapping handles prefixes).
                    For OpenAI/Azure, use 'gpt-4o'.
-            base_url: API endpoint URL. Falls back to OPENAI_BASE_URL env var.
+            base_url: API endpoint URL. Falls back to API_BASE_URL env var.
                      Examples:
                      - GitHub Models: https://models.github.ai/inference
-                     - Azure OpenAI: https://open-direct.openai.azure.com/openai/v1/
-            api_version: API version (legacy, not needed for Azure response API). Falls back to OPENAI_API_VERSION env var.
+                     - Azure OpenAI: https://your-resource.openai.azure.com/openai/v1/
+            api_version: API version (optional, for Azure legacy). Falls back to API_VERSION env var.
         """
-        # Try GITHUB_TOKEN if OPENAI_API_KEY not set (for GitHub Models)
-        self.api_key = api_key or os.environ.get("OPENAI_API_KEY") or os.environ.get("GITHUB_TOKEN")
-        self.model = model or os.environ.get("OPENAI_MODEL", "gpt-4o")
-        self.base_url = base_url or os.environ.get("OPENAI_BASE_URL")
-        self.api_version = api_version or os.environ.get("OPENAI_API_VERSION")
+        # Read API_TYPE to determine provider-specific defaults
+        api_type = os.environ.get("API_TYPE", "openai").strip().lower()
+        
+        # Unified naming: API_KEY (primary), GITHUB_TOKEN (fallback for github type)
+        self.api_key = api_key or os.environ.get("API_KEY") or os.environ.get("GITHUB_TOKEN")
+        self.model = model or os.environ.get("MODEL_NAME", "gpt-4o")
+        self.base_url = base_url or os.environ.get("API_BASE_URL")
+        self.api_version = api_version or os.environ.get("API_VERSION")
+        
+        # Auto-configure base_url for github type if not explicitly set
+        if api_type == "github" and not self.base_url:
+            self.base_url = "https://models.github.ai/inference"
+        
         self._client = None
         self._prompts_dir = Path(__file__).parent / "prompts"
 
@@ -395,6 +403,13 @@ class AINormalizationService:
                     generated_code=code,
                 )
 
+            # Reorder columns: Mail, Team, Organization first, then others
+            mandatory_cols = ["Mail", "Team", "Organization"]
+            available_mandatory = [col for col in mandatory_cols if col in transformed_df.columns]
+            other_cols = [col for col in transformed_df.columns if col not in mandatory_cols]
+            ordered_columns = available_mandatory + other_cols
+            clean_df = transformed_df[ordered_columns]
+
             # Generate report
             report_data = self._generate_report(
                 df, transformed_df, rules, original_columns
@@ -403,7 +418,7 @@ class AINormalizationService:
             # Write outputs if paths provided
             if output_clean_path:
                 output_clean_path.parent.mkdir(parents=True, exist_ok=True)
-                transformed_df.to_csv(output_clean_path, index=False, encoding="utf-8")
+                clean_df.to_csv(output_clean_path, index=False, encoding="utf-8")
 
             if output_report_path:
                 output_report_path.parent.mkdir(parents=True, exist_ok=True)
@@ -411,7 +426,7 @@ class AINormalizationService:
 
             return TransformationResult(
                 success=True,
-                clean_data=transformed_df,
+                clean_data=clean_df,
                 report_data=report_data,
                 errors=errors,
                 warnings=warnings,

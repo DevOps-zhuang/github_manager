@@ -12,6 +12,10 @@ from invitation.ai_normalization_service import (
     AINormalizationService,
     LLMService,
 )
+from invitation.config_validation import (
+    validate_config,
+    format_validation_summary,
+)
 
 
 def display_csv_analysis(analysis: dict) -> None:
@@ -192,28 +196,29 @@ def main(argv: Sequence[str] | None = None) -> None:
         "--api-key",
         type=str,
         default=None,
-        help="API key for authentication (can also use OPENAI_API_KEY or GITHUB_TOKEN env var)",
+        help="API key for authentication (can also use API_KEY or GITHUB_TOKEN env var)",
     )
     parser.add_argument(
         "--model",
         type=str,
         default=None,
-        help="LLM model to use (default: gpt-4o, or OPENAI_MODEL env var). "
-             "Examples: gpt-4o, gpt-4-turbo (OpenAI/Azure), openai/gpt-4o (GitHub Models)",
+        help="LLM model to use (default: gpt-4o, or MODEL_NAME env var). "
+             "Examples: gpt-4o, gpt-4-turbo",
     )
     parser.add_argument(
         "--base-url",
         type=str,
         default=None,
-        help="API endpoint URL (can also use OPENAI_BASE_URL env var). "
+        help="API endpoint URL (can also use API_BASE_URL env var). "
+             "Required for azure/custom API_TYPE. "
              "Examples: https://models.github.ai/inference (GitHub Models), "
-             "https://open-direct.openai.azure.com/openai/v1/ (Azure OpenAI)",
+             "https://your-resource.openai.azure.com/openai/v1/ (Azure OpenAI)",
     )
     parser.add_argument(
         "--api-version",
         type=str,
         default=None,
-        help="API version for legacy Azure OpenAI (optional, not needed for Response API)",
+        help="API version for legacy Azure OpenAI (optional, use API_VERSION env var)",
     )
     parser.add_argument(
         "--non-interactive",
@@ -269,6 +274,41 @@ def main(argv: Sequence[str] | None = None) -> None:
     clean_path = output_dir / f"{base_name}_clean.csv"
     report_path = output_dir / f"{base_name}_report.csv"
 
+    # Validate configuration before initializing services
+    cli_overrides = {
+        "api_key": args.api_key,
+        "model_name": args.model,
+        "api_base_url": args.base_url,
+        "api_version": args.api_version,
+    }
+    validation = validate_config(cli_overrides)
+    
+    # Print validation summary
+    print(format_validation_summary(validation))
+    
+    # Display warnings
+    for warning in validation.warnings:
+        print(f"⚠️  Warning: {warning}", file=sys.stderr)
+    
+    # Check if AI is degraded
+    if validation.degraded_ai:
+        print("\n" + "=" * 60, file=sys.stderr)
+        print("AI CONFIGURATION UNAVAILABLE", file=sys.stderr)
+        print("=" * 60, file=sys.stderr)
+        print("The AI normalization feature requires valid configuration.", file=sys.stderr)
+        print("\nErrors detected:", file=sys.stderr)
+        for error in validation.errors:
+            print(f"  ❌ {error}", file=sys.stderr)
+        print("\nPlease fix the configuration and try again.", file=sys.stderr)
+        print("\nConfiguration help:", file=sys.stderr)
+        print("  - Set API_TYPE (openai/github/azure/custom) in environment", file=sys.stderr)
+        print("  - For OpenAI: API_KEY=sk-xxx", file=sys.stderr)
+        print("  - For GitHub Models: API_KEY=ghu_xxx or GITHUB_TOKEN=github_pat_xxx", file=sys.stderr)
+        print("  - For Azure/Custom: API_KEY + API_BASE_URL required", file=sys.stderr)
+        print("\nSee docs/CONFIGURATION.md for detailed examples.", file=sys.stderr)
+        print("=" * 60, file=sys.stderr)
+        sys.exit(0)  # Friendly exit, not an error
+
     # Initialize services
     try:
         llm_service = LLMService(
@@ -281,9 +321,9 @@ def main(argv: Sequence[str] | None = None) -> None:
     except Exception as e:
         print(f"Error initializing AI service: {e}", file=sys.stderr)
         print("\nConfiguration help:", file=sys.stderr)
-        print("  - For OpenAI: set OPENAI_API_KEY environment variable", file=sys.stderr)
-        print("  - For GitHub Models: set GITHUB_TOKEN and OPENAI_BASE_URL=https://models.github.ai/inference", file=sys.stderr)
-        print("  - For Azure OpenAI: set OPENAI_API_KEY and OPENAI_BASE_URL", file=sys.stderr)
+        print("  - For OpenAI: set API_KEY environment variable", file=sys.stderr)
+        print("  - For GitHub Models: set GITHUB_TOKEN or API_KEY and API_BASE_URL=https://models.github.ai/inference", file=sys.stderr)
+        print("  - For Azure OpenAI: set API_KEY and API_BASE_URL", file=sys.stderr)
         print("  - Or use --api-key command line argument", file=sys.stderr)
         sys.exit(1)
 

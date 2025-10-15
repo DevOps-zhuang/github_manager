@@ -33,11 +33,13 @@ The AI will:
 
 See [docs/AI_NORMALIZATION.md](docs/AI_NORMALIZATION.md) for detailed guide and examples.
 
-**Configuration:**
-- Set `OPENAI_API_KEY` and optionally `OPENAI_MODEL` (default: gpt-4o)
-- For GitHub Models: Set `OPENAI_BASE_URL=https://models.inference.ai.azure.com`
-- For Azure OpenAI: Set `OPENAI_BASE_URL` and `OPENAI_API_VERSION`
-- See [docs/AI_CONFIGURATION.md](docs/AI_CONFIGURATION.md) for complete configuration guide
+**AI 配置（新统一命名）:**
+- 选择供应商：`API_TYPE=openai|github|azure|custom`
+- 基础变量：`API_KEY`, `MODEL_NAME`（默认 `gpt-4o`）
+- 仅当 `API_TYPE=azure` 或 `custom` 时需要：`API_BASE_URL`（Azure 例：`https://<resource>.openai.azure.com/openai/v1/`）
+- 可选：`API_VERSION`（旧版 Azure 接口或指定 preview 时）、`DEFAULT_ORGANIZATION`、`DEFAULT_TEAM_PREFIX`
+- GitHub 邀请专用：`GITHUB_TOKEN`（与 AI 模型调用凭据分离；当 `API_TYPE=github` 且 `API_KEY` 缺失时可回退使用）
+- 详见新增文档：[docs/CONFIGURATION.md](docs/CONFIGURATION.md)
 
 ---
 
@@ -154,6 +156,19 @@ python scripts/scan_enterprise.py || exit 1
 No hard-coded conditionals are allowed in public modules. The loader derives the path from the key.
 
 See `ENTERPRISE_INTEGRATION.md` for full guidelines.
+
+## AI / 邀请配置快速参考
+
+| API_TYPE | 必填 | 可选 | 默认 | 说明 |
+|----------|------|------|------|------|
+| openai   | API_KEY | MODEL_NAME | MODEL_NAME=gpt-4o | 无需 API_BASE_URL |
+| github   | API_KEY（或回退 GITHUB_TOKEN） | MODEL_NAME | MODEL_NAME=gpt-4o | 内部映射官方 endpoint |
+| azure    | API_KEY, API_BASE_URL | MODEL_NAME, API_VERSION | MODEL_NAME=gpt-4o | 需自填 endpoint |
+| custom   | API_KEY, API_BASE_URL | MODEL_NAME | MODEL_NAME=gpt-4o | 第三方/代理场景 |
+
+优先级：CLI 参数 > 环境变量 > 内置默认。
+
+无效 AI 配置时：AI 标准化 CLI 将友好退出（退出码 0），邀请等非 AI 功能可以继续运行。
 
 ## Important limitations and notes
 
