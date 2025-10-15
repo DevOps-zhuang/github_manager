@@ -97,6 +97,13 @@ def validate_config(cli_overrides: dict[str, Any] | None = None) -> ValidationRe
                     "Neither was found in configuration."
                 )
                 degraded_ai = True
+        
+        # Auto-configure base_url for github if not set
+        if not api_base_url:
+            api_base_url = "https://models.github.ai/inference"
+            warnings.append(
+                "API_BASE_URL not set for API_TYPE=github; auto-configured to GitHub Models endpoint"
+            )
 
     elif api_type == "azure":
         if not api_key:

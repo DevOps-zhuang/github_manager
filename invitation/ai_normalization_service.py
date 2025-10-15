@@ -71,11 +71,19 @@ class LLMService:
                      - Azure OpenAI: https://your-resource.openai.azure.com/openai/v1/
             api_version: API version (optional, for Azure legacy). Falls back to API_VERSION env var.
         """
+        # Read API_TYPE to determine provider-specific defaults
+        api_type = os.environ.get("API_TYPE", "openai").strip().lower()
+        
         # Unified naming: API_KEY (primary), GITHUB_TOKEN (fallback for github type)
         self.api_key = api_key or os.environ.get("API_KEY") or os.environ.get("GITHUB_TOKEN")
         self.model = model or os.environ.get("MODEL_NAME", "gpt-4o")
         self.base_url = base_url or os.environ.get("API_BASE_URL")
         self.api_version = api_version or os.environ.get("API_VERSION")
+        
+        # Auto-configure base_url for github type if not explicitly set
+        if api_type == "github" and not self.base_url:
+            self.base_url = "https://models.github.ai/inference"
+        
         self._client = None
         self._prompts_dir = Path(__file__).parent / "prompts"
 

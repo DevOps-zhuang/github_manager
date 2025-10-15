@@ -62,7 +62,10 @@ class TestConfigValidation:
             result = validate_config()
             assert result.is_valid
             assert not result.degraded_ai
-            assert len(result.warnings) == 0
+            # Expect auto-config warning for base_url
+            assert len(result.warnings) == 1
+            assert "auto-configured to GitHub Models endpoint" in result.warnings[0]
+            assert result.effective["api_base_url"] == "https://models.github.ai/inference"
 
     def test_github_fallback_to_token(self):
         """GitHub Models falls back to GITHUB_TOKEN with warning."""
@@ -74,8 +77,10 @@ class TestConfigValidation:
             result = validate_config()
             assert result.is_valid
             assert not result.degraded_ai
-            assert len(result.warnings) == 1
-            assert "falling back to GITHUB_TOKEN" in result.warnings[0]
+            # Expect two warnings: fallback + auto-config
+            assert len(result.warnings) == 2
+            assert any("falling back to GITHUB_TOKEN" in w for w in result.warnings)
+            assert any("auto-configured to GitHub Models endpoint" in w for w in result.warnings)
 
     def test_github_no_credentials(self):
         """GitHub Models without any credentials degrades AI."""
