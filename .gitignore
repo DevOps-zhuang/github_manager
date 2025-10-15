@@ -6,6 +6,7 @@ invitation/reports/*
 
 # Ignore all enterprise-specific customizations and data
 invitation/customize/
+logs/
 
 # Python virtual env
 venv/
@@ -18,13 +19,13 @@ __pycache__/
 .vscode/
 
 # Environment variables and secrets
-.env
+.env*
 .env.local
 
-# Test artifacts
+# Test artifacts (excluding tests/ directory which contains test source code)
 .pytest_cache/
 *.log
-*test_*
+/*test_*
 demo_apply.csv
 
 
