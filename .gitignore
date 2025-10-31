@@ -27,5 +27,6 @@ __pycache__/
 *.log
 /*test_*
 demo_apply.csv
+*.csv
 
 

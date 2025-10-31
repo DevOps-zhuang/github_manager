@@ -82,6 +82,9 @@ from metrics import fetch_metrics
 fetch_metrics()
 ```
 
+# 语言要求
+所以和Copilot的交流都必须使用中文。请copilot用中文回答我的问题。
+
 ## Notes
 - Ensure all API keys and sensitive data are stored securely (e.g., environment variables).
 - Document any new patterns or workflows in this file.
