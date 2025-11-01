@@ -5,6 +5,23 @@
 > 版本：v0.2.1（更新日期：2025-10-31） · [查看 Release Notes](docs/RELEASE_NOTES.md)
 
 ---
+## 🆕 Web版本（B/S架构）正在规划中
+
+我们正在将AI辅助数据标准化功能改造为Web应用，降低使用门槛，提供更友好的交互体验：
+
+- 📄 **部署分析总结**：[BS_DEPLOYMENT_SUMMARY.md](docs/BS_DEPLOYMENT_SUMMARY.md) - 快速了解B/S架构方案
+- 📋 **详细需求分析**：[req-bs-deployment-analysis.md](docs/requirements/req-bs-deployment-analysis.md) - 完整技术方案
+- 🚀 **实施指南**：[plan-bs-implementation-guide.md](docs/plans/plan-bs-implementation-guide.md) - 分阶段实施计划
+
+**核心特性预览**：
+- ✅ Web界面上传CSV → AI多轮对话修改规则 → 预览结果 → 下载标准化文件
+- ✅ 自动生成Python代码的**安全执行机制**（白名单+沙箱+超时控制）
+- ✅ 任务持久化（服务重启后数据不丢失）
+- ✅ Docker一键部署
+
+> **当前状态**：需求分析和实施计划已完成，等待开发实施。CLI版本仍可正常使用。
+
+---
 ## 目录结构概览
 | 目录 | 作用 |
 |------|------|
