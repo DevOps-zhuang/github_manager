@@ -29,4 +29,7 @@ __pycache__/
 demo_apply.csv
 *.csv
 
+# Web runtime data
+runtime/
+
 
