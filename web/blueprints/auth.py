@@ -9,12 +9,21 @@ auth_bp = Blueprint('auth', __name__)
 @auth_bp.route('/login', methods=['POST'])
 def login():
     """Admin login."""
-    data = request.get_json()
+    # Try to get JSON data, handle different content types
+    data = request.get_json(silent=True)
+    
+    # If JSON parsing failed, try form data
+    if not data:
+        data = request.form.to_dict() if request.form else None
+    
     if not data:
         return jsonify({'error': '请求体不能为空', 'code': 'EMPTY_BODY'}), 400
     
     username = data.get('username')
     password = data.get('password')
+    
+    if not username or not password:
+        return jsonify({'error': '用户名和密码不能为空', 'code': 'MISSING_CREDENTIALS'}), 400
     
     # Validate credentials
     if (username == current_app.config['ADMIN_USERNAME'] and 
