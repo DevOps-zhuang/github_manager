@@ -279,23 +279,26 @@ curl http://localhost:5000/api/health
 
 **2. 登录**
 
+**Linux/Mac**:
 ```bash
 curl -X POST http://localhost:5000/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"admin123"}'
 ```
 
-**Windows PowerShell**:
+**Windows PowerShell（推荐）**:
 ```powershell
 $body = '{"username":"admin","password":"admin123"}'
 Invoke-RestMethod -Method Post -Uri "http://localhost:5000/api/auth/login" `
   -ContentType "application/json" -Body $body
 ```
 
-**Windows cmd**:
+**Windows CMD**:
 ```cmd
 curl -X POST http://localhost:5000/api/auth/login -H "Content-Type: application/json" -d "{\"username\":\"admin\",\"password\":\"admin123\"}"
 ```
+
+**注意**：Windows用户强烈推荐使用PowerShell的`Invoke-RestMethod`，避免引号转义问题。详见 [WINDOWS_CURL_GUIDE.md](WINDOWS_CURL_GUIDE.md)
 
 响应示例：
 ```json
@@ -363,27 +366,58 @@ cd frontend
 npm install
 ```
 
-### Q3: curl登录返回 "BAD_REQUEST"
+### Q3: curl登录返回 "EMPTY_BODY" 或 "BAD_REQUEST"
 
-**A**: 检查以下几点：
+**A**: Windows用户遇到引号转义问题。
 
-1. **Windows cmd**: 使用双引号并转义内部引号
-   ```cmd
-   curl -X POST http://localhost:5000/api/auth/login -H "Content-Type: application/json" -d "{\"username\":\"admin\",\"password\":\"admin123\"}"
-   ```
+**最佳解决方案 - 使用PowerShell的Invoke-RestMethod**:
+```powershell
+$body = '{"username":"admin","password":"admin123"}'
+Invoke-RestMethod -Method Post -Uri "http://localhost:5000/api/auth/login" `
+  -ContentType "application/json" -Body $body
+```
 
-2. **Windows PowerShell**: 使用Invoke-RestMethod
-   ```powershell
-   $body = '{"username":"admin","password":"admin123"}'
-   Invoke-RestMethod -Method Post -Uri "http://localhost:5000/api/auth/login" -ContentType "application/json" -Body $body
-   ```
+**完整的Windows curl指南**: 参见 [WINDOWS_CURL_GUIDE.md](WINDOWS_CURL_GUIDE.md)
 
-3. **Linux/Mac**: 使用单引号包裹JSON
+**其他平台**:
+- **Linux/Mac**: 使用单引号
+  ```bash
+  curl -X POST http://localhost:5000/api/auth/login \
+    -H "Content-Type: application/json" \
+    -d '{"username":"admin","password":"admin123"}'
+  ```
+
+- **Windows CMD**: 必须转义双引号
+  ```cmd
+  curl -X POST http://localhost:5000/api/auth/login -H "Content-Type: application/json" -d "{\"username\":\"admin\",\"password\":\"admin123\"}"
+  ```
+
+### Q3a: 前端npm start报错 "Invalid options object"
+
+**错误信息**:
+```
+Invalid options object. Dev Server has been initialized using an options object that does not match the API schema.
+ - options.allowedHosts[0] should be a non-empty string.
+```
+
+**A**: 这是react-scripts 5.x的已知问题。已包含修复：
+
+1. 确认 `frontend/.env` 文件存在（应已自动创建）
+2. 如果不存在，手动创建：
    ```bash
-   curl -X POST http://localhost:5000/api/auth/login \
-     -H "Content-Type: application/json" \
-     -d '{"username":"admin","password":"admin123"}'
+   cd frontend
+   echo "SKIP_PREFLIGHT_CHECK=true" > .env
+   echo "DANGEROUSLY_DISABLE_HOST_CHECK=true" >> .env
    ```
+3. 重新运行 `npm start`
+
+**Windows用户**:
+```cmd
+cd frontend
+echo SKIP_PREFLIGHT_CHECK=true > .env
+echo DANGEROUSLY_DISABLE_HOST_CHECK=true >> .env
+npm start
+```
 
 ### Q4: 前端无法连接后端API
 

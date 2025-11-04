@@ -137,6 +137,33 @@ REACT_APP_API_BASE=/api
 PORT=3001 npm start
 ```
 
+### npm start 错误: "Invalid options object"
+
+**错误信息**:
+```
+Invalid options object. Dev Server has been initialized using an options object that does not match the API schema.
+ - options.allowedHosts[0] should be a non-empty string.
+```
+
+**解决方案**:
+
+这是react-scripts 5.x版本的已知问题。已经包含了修复文件：
+
+1. 确认 `.env` 文件存在（已自动创建）
+2. 如果问题仍然存在，手动创建 `.env` 文件：
+
+```bash
+# 在 frontend/ 目录创建 .env 文件
+echo "SKIP_PREFLIGHT_CHECK=true" > .env
+echo "DANGEROUSLY_DISABLE_HOST_CHECK=true" >> .env
+```
+
+3. 重新运行：
+
+```bash
+npm start
+```
+
 ### 代理问题
 
 如果API请求失败，确保：
