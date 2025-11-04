@@ -19,13 +19,32 @@ __pycache__/
 .vscode/
 
 # Environment variables and secrets
-.env*
+# Allow example and development .env files but exclude local overrides
 .env.local
+.env.*.local
+!frontend/.env
+!frontend/.env.example
+!frontend/.env.development
 
 # Test artifacts (excluding tests/ directory which contains test source code)
 .pytest_cache/
 *.log
 /*test_*
 demo_apply.csv
+*.csv
+
+# Web runtime data
+runtime/
+
+# Frontend
+frontend/node_modules/
+frontend/build/
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
 
 

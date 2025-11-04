@@ -1,0 +1,9 @@
+# Web framework
+flask>=3.0.0
+flask-cors>=4.0.0
+
+# JWT
+pyjwt>=2.8.0
+
+# Include base requirements
+-r requirements.txt

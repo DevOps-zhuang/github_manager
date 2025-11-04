@@ -1,191 +1,211 @@
 # GitHub Manager
 
-A small toolset to batch-invite users into GitHub organizations and collect metrics.
+批量邀请用户加入 GitHub 组织 / 团队 + AI 辅助 CSV 标准化的工具集。
 
-## What this project does
-
-- **AI-assisted data normalization**: Describe transformations in natural language, let AI generate and execute the code.
-- Read normalized CSVs containing Mail / Organization / Team.
-- Create missing teams in target organizations (when permitted).
-- Invite users into organizations and optionally add them to teams.
-- Produce per-invite reports in CSV format under `invitation/reports/`.
-
-## Usage
-
-### AI-Assisted Data Normalization (NEW! 🚀)
-
-For users without programming background, use natural language to describe data transformations:
-
-```bash
-python -m invitation.ai_normalizer_cli input.csv
-```
-
-The AI will:
-- Analyze your CSV structure
-- Let you describe transformations in plain English
-- Generate and show transformation code for review
-- Execute safely and produce `_clean.csv` and `_report.csv`
-
-**Example transformations:**
-- "Rename EmailAddress to Mail and Department to Team"
-- "Filter rows where Status equals Active"
-- "Merge FirstName and LastName into FullName with space"
-
-See [docs/AI_NORMALIZATION.md](docs/AI_NORMALIZATION.md) for detailed guide and examples.
-
-**AI 配置（新统一命名）:**
-- 选择供应商：`API_TYPE=openai|github|azure|custom`
-- 基础变量：`API_KEY`, `MODEL_NAME`（默认 `gpt-4o`）
-- 仅当 `API_TYPE=azure` 或 `custom` 时需要：`API_BASE_URL`（Azure 例：`https://<resource>.openai.azure.com/openai/v1/`）
-- 可选：`API_VERSION`（旧版 Azure 接口或指定 preview 时）、`DEFAULT_ORGANIZATION`、`DEFAULT_TEAM_PREFIX`
-- GitHub 邀请专用：`GITHUB_TOKEN`（与 AI 模型调用凭据分离；当 `API_TYPE=github` 且 `API_KEY` 缺失时可回退使用）
-- 详见新增文档：[docs/CONFIGURATION.md](docs/CONFIGURATION.md)
+> 版本：v0.2.1（更新日期：2025-10-31） · [查看 Release Notes](docs/RELEASE_NOTES.md)
 
 ---
+## 🆕 Web版本（B/S架构）正在规划中
 
-### Basic Invitation Workflow
+我们正在将AI辅助数据标准化功能改造为Web应用，降低使用门槛，提供更友好的交互体验：
 
-1. **Normalize enterprise data**: Use the data transformation pipeline to convert enterprise CSVs into the standard format `Mail,Organization,Team`.
+- 📄 **部署分析总结**：[BS_DEPLOYMENT_SUMMARY.md](docs/BS_DEPLOYMENT_SUMMARY.md) - 快速了解B/S架构方案
+- 📋 **详细需求分析**：[req-bs-deployment-analysis.md](docs/requirements/req-bs-deployment-analysis.md) - 完整技术方案
+- 🚀 **实施指南**：[plan-bs-implementation-guide.md](docs/plans/plan-bs-implementation-guide.md) - 分阶段实施计划
 
-   ```powershell
-   venv\Scripts\python -m invitation.pipeline <enterprise_key> <input_csv> [<output_csv>]
+**核心特性预览**：
+- ✅ Web界面上传CSV → AI多轮对话修改规则 → 预览结果 → 下载标准化文件
+- ✅ 自动生成Python代码的**安全执行机制**（白名单+沙箱+超时控制）
+- ✅ 任务持久化（服务重启后数据不丢失）
+- ✅ Docker一键部署
+
+> **当前状态**：需求分析和实施计划已完成，等待开发实施。CLI版本仍可正常使用。
+
+---
+## 目录结构概览
+| 目录 | 作用 |
+|------|------|
+| `invitation/` | 邀请与标准化核心逻辑 |
+| `invitation/customize/<Enterprise>/` | 企业私有标准化脚本（不入库）|
+| `invitation/reports/` | 邀请执行结果、重试批次 |
+| `docs/` | 配置、需求、发布说明等文档 |
+
+---
+## 一、快速开始（从 CSV 到成功邀请）
+| 步骤 | 说明 | 命令示例 |
+|------|------|----------|
+| 1 | 创建/激活虚拟环境并安装依赖 | `python -m venv venv` / `venv\Scripts\activate` / `pip install -r requirements.txt` |
+| 2 | 准备原始企业 CSV | 放到 `invitation/customize/<Enterprise>/` 下 |
+| 3 | 生成标准化文件（AI 或自定义 normalizer） | `venv\Scripts\python -m invitation.ai_normalizer_cli raw.csv` 或使用已有 normalizer/pipeline |
+| 4 | 检查标准化输出 `_clean.csv` 是否包含列：`Mail, Team, Organization` | 手动打开或用表格工具预览 |
+| 5 | 试运行（不调用 API） | `venv\Scripts\python -m invitation.inviter cleaned.csv --dry-run` |
+| 6 | 正式执行邀请 | `venv\Scripts\python -m invitation.inviter cleaned.csv --mode grouped` |
+| 7 | 查看结果与报告 | 原 CSV `invitation_result` 列 + `invitation/reports/*.csv` |
+| 8 | 若触发配额上限执行重试批次生成 | `venv\Scripts\python -m invitation.bin.retry_failed --input invitation\reports\xxx_results.csv` |
+
+---
+## 二、标准化输出要求
+| 字段 | 必须 | 说明 |
+|------|------|------|
+| `Mail` | 是 | 用户邮箱（区分大小写字段名） |
+| `Organization` | 是 | GitHub 组织名 |
+| `Team` | 是（内容可为空） | 为空表示只加组织不加团队 |
+| `ParentTeam` | 否 | 行级父团队（CLI `--parent-team` 可覆盖）|
+| `invitation_result` | 否 | 运行后由程序写入/更新（success/failed）|
+
+列顺序推荐（工具当前已保证）：`Mail, Team, Organization, ...其他列`。
+
+---
+## 三、AI 辅助标准化（可选）
+使用自然语言描述转换：
+```cmd
+venv\Scripts\python -m invitation.ai_normalizer_cli input.csv
+```
+交互过程：分析列 → 询问/确认规则 → 生成并展示安全代码 → 执行生成 `_clean.csv` 与 `_report.csv`。
+
+详细配置、供应商矩阵、降级逻辑参见：`docs/CONFIGURATION.md`。
+
+核心环境变量（节选）：
+| 变量 | 用途 | 说明 |
+|------|------|------|
+| `API_TYPE` | openai/github/azure/custom | 供应商类型 |
+| `API_KEY` | LLM 密钥 | github 可回退 `GITHUB_TOKEN`（警告）|
+| `MODEL_NAME` | 模型 | 默认 `gpt-4o` |
+| `API_BASE_URL` | 自定义/azure 端点 | 其他供应商可空 |
+| `DEFAULT_ORGANIZATION` | 预留 | 未来可用于邀请缺省值 |
+| `DEFAULT_TEAM_PREFIX` | 预留 | 未来可用于前缀补全 |
+
+---
+## 四、邀请执行命令详解
+基础命令：
+```cmd
+venv\Scripts\python -m invitation.inviter normalized_or_clean.csv
+```
+常用参数：
+| 参数 | 说明 | 示例 |
+|------|------|------|
+| `--mode` | `grouped`(默认)：按 (Org,Team,Parent) 分组；`individual`：逐行 | `--mode individual` |
+| `--report` | 指定结果 CSV 输出路径 | `--report invitation\reports\sanhua_invitation_results.csv` |
+| `--skip-successful` | 跳过已有 `invitation_result=success` 的行 | `--skip-successful` |
+| `--organization` | 过滤只处理某些组织，可重复 | `--organization OrgA --organization OrgB` |
+| `--team` | 过滤团队，可重复 | `--team Backend --team QA` |
+| `--parent-team` | 为所有团队统一设置父团队（优先级高于行内 `ParentTeam`） | `--parent-team China-Dev` |
+| `--team-prefix` | 为所有非空团队名前加前缀（已含前缀则跳过） | `--team-prefix SH-` |
+| `--dry-run` | 不调用 GitHub API，仅打印计划 | `--dry-run` |
+| `--per-invite-delay` | 每个邀请之间 sleep 秒数 | `--per-invite-delay 1.0` |
+| `--token` | 指定 GitHub Token（优先于环境变量） | `--token ghp_xxx` |
+| `--enterprise` | 指定企业 key 影响报告文件命名 | `--enterprise sanhua` |
+
+执行后：
+1. 生成/更新报告：`invitation/reports/<enterprise>_invitation_results.csv`
+2. 回写输入 CSV：添加/更新 `invitation_result` 列（success/failed）
+3. 日志中列出 SUCCESS / FAILURE 统计
+
+---
+## 五、团队创建与父子层级规则
+1. 先按输入收集所有 (Organization, Team, ParentTeam) 组合
+2. 列出组织现有团队（`GET /orgs/{org}/teams`）
+3. 不存在 → 若指定父团队：
+   - 父团队不存在则尝试创建父团队
+   - 再创建子团队（带 `parent_team_slug`）
+4. 未指定父团队则直接创建团队
+5. `--team-prefix` 在创建前完成修改并写回 CSV 行
+
+---
+## 六、速率限制与重试
+GitHub 组织邀请通常存在 24 小时配额（例如 50）。出现 422 / Over invitation rate limit：
+1. 首次执行完成后查看报告
+2. 生成分批重试文件：
+   ```cmd
+   venv\Scripts\python -m invitation.bin.retry_failed --input invitation\reports\<enterprise>_invitation_results.csv
    ```
+3. 按生成的 `invitation/reports/retry_batches/<Org>/batch_n.csv` 在下一窗口重新执行 inviter。
 
-   - `<enterprise_key>`: lower-case key that matches the customize directory and normalizer class (e.g. `sanhua` → `invitation/customize/Sanhua/normalizer.py` → `SanhuaNormalizer`).
-   - `<output_csv>` is optional; if omitted, the pipeline writes to `normalized_<input-filename>` alongside the source file.
-   - 若目标标准化文件已存在，流水线会保留其中的 `invitation_result` 列并与新的行合并，仅刷新业务字段。
+脚本策略：按时间排序 → 滑动 24 小时窗口 → 每批最多 50 条。
 
-   Example (auto-derived output path):
-   ```powershell
-   venv\Scripts\python -m invitation.pipeline sanhua invitation\customize\Sanhua\Sanhua_apply.csv
-   ```
+---
+## 七、典型场景命令速查
+| 场景 | 命令 |
+|------|------|
+| 首次全量邀请 | `invitation.inviter xxx_clean.csv --mode grouped` |
+| 只重跑失败且跳过成功 | `invitation.inviter xxx_clean.csv --skip-successful` |
+| 仅邀请指定组织 | `invitation.inviter file.csv --organization MyOrg` |
+| 仅邀请指定多个团队 | `invitation.inviter file.csv --team Backend --team QA` |
+| 批量给团队加前缀 | `invitation.inviter file.csv --team-prefix SH-` |
+| 强制所有团队挂到一个父团队 | `invitation.inviter file.csv --parent-team HQ` |
+| 验证计划不真正执行 | `invitation.inviter file.csv --dry-run` |
+| 逐条执行（调试） | `invitation.inviter file.csv --mode individual` |
+| 处理 retry 批次 | `invitation.inviter invitation\reports\retry_batches\Org\batch_1.csv` |
 
-2. **Run invitations**: Use the normalized CSV to send GitHub invitations。
+> Windows 下如已激活 venv，`python -m invitation.inviter` 与 `venv\Scripts\python -m invitation.inviter` 等价；未激活时需写全路径确保使用虚拟环境解释器。
 
-   > 每次执行成功/失败后，工具会在原始标准化 CSV 中维护一列 `invitation_result`（`success` 或 `failed`），便于后续过滤或复用。
+---
+## 八、Token / 环境变量与 .env 说明
+邀请逻辑（`invitation.inviter`）本身 **不会自动读取 `.env` 文件**。若你希望通过 `.env` 提供 `GITHUB_TOKEN`：
+1. 安装 `python-dotenv`（若未安装）
+2. 在执行前手动 `set GITHUB_TOKEN=...`，或
+3. 写一个小的启动脚本自行 `from dotenv import load_dotenv; load_dotenv()` 然后调用 `main()`。
 
-   ```powershell
-   venv\Scripts\python -m invitation.inviter <normalized.csv> --organization <OrgName> --token <GITHUB_TOKEN> [--enterprise <key>] [--report <path>]
-   ```
-
-### Command Options
-
-**Invitation CLI (`invitation.inviter`)**:
-- `--mode` : `grouped` or `individual` (default `grouped`)
-- `--report` : path to write results (default `invitation/reports/<enterprise>_invitation_results.csv`)
-- `--enterprise` : overrides the enterprise key used for report naming (otherwise inferred from normalized CSV path such as `.../customize/Sanhua/...`)
-- `--parent-team` : optionally provide a parent team name for all teams created during this run；若未指定则直接在组织下创建团队
-- `--team-prefix` : 邀请前为每个团队名称增加统一前缀（若团队已带此前缀则不会重复添加）
-- `--skip-successful` : 跳过标准化 CSV 中已标记 `invitation_result=success` 的行，避免重复邀请
-- 若标准化 CSV 包含 `ParentTeam` 列，则依然可为特定行覆盖父团队；若 CLI 传入 `--parent-team`，则以 CLI 值为准。
-- `--dry-run` : print planned invitations without calling GitHub API
-- `--per-invite-delay` : seconds to wait between invites to reduce burstiness (default 0.5)
-
-**Data Pipeline CLI (`invitation.pipeline`)**:
-- First argument: enterprise normalizer key (lower-case, e.g., `sanhua`)
-- Second argument: input CSV path
-- Optional third argument: output CSV path (default `normalized_<input-filename>` in same directory)
-
-### Handling Rate Limit Failures
-
-If you encounter GitHub's invitation rate limits (50 invites per 24h), use the retry script:
-
-```powershell
-venv\Scripts\python -m invitation.bin.retry_failed invitation\reports\invitation_results.csv
+推荐做法（Windows CMD）：
+```cmd
+set GITHUB_TOKEN=ghp_xxx
+venv\Scripts\python -m invitation.inviter xxx_clean.csv
+```
+或直接用参数：
+```cmd
+venv\Scripts\python -m invitation.inviter xxx_clean.csv --token ghp_xxx
 ```
 
-This will split failed invitations into manageable batches that respect GitHub's limits.
+差异说明：
+| 方式 | 是否需激活 venv | 依赖可用性 | 说明 |
+|------|-----------------|-----------|------|
+| `venv\Scripts\python -m ...` | 不需要（显式指定解释器） | 始终使用 venv | 最稳妥 |
+| 激活后 `python -m ...` | 需要先 `venv\Scripts\activate` | 使用已激活 venv | 常规方式 |
+| 系统全局 `python -m ...` | 否 | 可能缺依赖 | 不推荐 |
 
-## Enterprise Data Organization
+---
+## 九、诊断与排查
+| 现象 | 可能原因 | 处理 |
+|------|----------|------|
+| 缺少必需列报错 | 列名大小写不匹配 | 确认首字母大写：`Mail` 等 |
+| 403 | Token scope 不足 | PAT 需含 `admin:org` |
+| 422 Over invitation rate limit | 组织配额耗尽 | 生成 retry 批次等待窗口 |
+| 422 Unprocessable invitation | 邮箱无效/重复 pending | 让用户接受或取消旧邀请 |
+| 409 Conflict | 已有待处理邀请 | 等待或清理旧记录 |
+| 团队未创建 | 权限不足或父团队创建失败 | 检查 token 权限 / 名称冲突 |
 
-### Public vs Private Files
-
-- **Public** (`invitation/normalizers/`): Contains generic normalizer infrastructure only. No enterprise-specific code or data.
-- **Private** (`invitation/customize/<Enterprise>/`): Contains actual enterprise data, mappings, and implementations. **Completely excluded from git via `.gitignore`**.
-
-### Adding New Enterprise Support
-
-1. Create directory `invitation/customize/<Enterprise>/`
-2. Add your enterprise-specific normalizer implementation in `normalizer.py`
-3. Add your enterprise data files (CSV, documentation, etc.)
-4. The public normalizer system will automatically discover and load your implementation
-
-Example structure:
-```
-invitation/customize/Acme/
-   ├── normalizer.py              # AcmeNormalizer implementation
-   ├── Acme_apply.csv             # Original enterprise data
-   ├── Acme_apply_normalized.csv  # Processed output
-   └── Acme.md                    # Enterprise-specific documentation
-```
-
-**Important**: No sample files are needed since the entire customize directory is private and excluded from version control.
-
-### Enterprise Isolation Policy (Critical)
-
-To prevent accidental leakage of sensitive enterprise identifiers or user data:
-
-1. Never place real user emails or internal department names outside `invitation/customize/`.
-2. Do not add new shim modules (e.g. `acme.py`) under `invitation/normalizers/`.
-3. Enterprise-specific logic must live in: `invitation/customize/<Enterprise>/normalizer.py`.
-4. Raw source CSVs must NOT be committed; only store them locally under the customize path.
-5. Public code MUST remain generic – no company names, email domains, or internal taxonomy.
-6. Run the scan script before committing:
-
-```powershell
+---
+## 十、企业隔离与安全
+见：`ENTERPRISE_INTEGRATION.md` 与扫描脚本：
+```cmd
 python scripts/scan_enterprise.py
 ```
 
-CI：仓库已配置 GitHub Actions（`.github/workflows/ci-enterprise-scan.yml`）在 push / PR 时自动执行上述扫描，确保企业数据不会被误提交。
+不要提交：真实邮箱 / 内部部门结构 / 原始源数据。
 
-### Optional Git Pre-Commit Hook
+---
+## 十一、后续改进（Roadmap 摘要）
+- 将 `.env` 自动加载加入邀请 CLI（需评估安全）
+- DEFAULT_ORGANIZATION / DEFAULT_TEAM_PREFIX 深度整合
+- 增加并发 + 排队节流策略
+- 增加 web UI (后续版本)
 
-Create `.git/hooks/pre-commit` (and make it executable on non-Windows systems):
+---
+## 十二、贡献
+1. Fork & Branch
+2. 编写或扩展 normalizer / CLI 功能
+3. 添加测试：`pytest`
+4. 提交 PR，遵循文档与安全规范
 
-```sh
-#!/bin/sh
-python scripts/scan_enterprise.py || exit 1
-```
+---
+## License
+内部/私有使用（如需开放请补充明确协议）。
 
-### Dynamic Loading Recap
+---
+如需更详细说明，请阅读：
+- `docs/CONFIGURATION.md`
+- `docs/requirements/req-ai-assisted-normalization.md`
+- `docs/RELEASE_NOTES.md`
 
-| Enterprise Key | Directory | File | Class |
-| -------------- | --------- | ---- | ----- |
-| `acme`         | `Acme`    | `normalizer.py` | `AcmeNormalizer` |
-
-No hard-coded conditionals are allowed in public modules. The loader derives the path from the key.
-
-See `ENTERPRISE_INTEGRATION.md` for full guidelines.
-
-## AI / 邀请配置快速参考
-
-| API_TYPE | 必填 | 可选 | 默认 | 说明 |
-|----------|------|------|------|------|
-| openai   | API_KEY | MODEL_NAME | MODEL_NAME=gpt-4o | 无需 API_BASE_URL |
-| github   | API_KEY（或回退 GITHUB_TOKEN） | MODEL_NAME | MODEL_NAME=gpt-4o | 内部映射官方 endpoint |
-| azure    | API_KEY, API_BASE_URL | MODEL_NAME, API_VERSION | MODEL_NAME=gpt-4o | 需自填 endpoint |
-| custom   | API_KEY, API_BASE_URL | MODEL_NAME | MODEL_NAME=gpt-4o | 第三方/代理场景 |
-
-优先级：CLI 参数 > 环境变量 > 内置默认。
-
-无效 AI 配置时：AI 标准化 CLI 将友好退出（退出码 0），邀请等非 AI 功能可以继续运行。
-
-## Important limitations and notes
-
-- **GitHub Rate Limits**: Organizations commonly have a cap on invitations in a rolling 24h window (e.g., 50 invites/24h). When reached, the API returns 422 `Over invitation rate limit`.
-- **Rate vs Volume**: Slowing per-request rate (delay between invites) can reduce endpoint rate-limits but does NOT bypass organization-level daily caps.
-- **Security**: Do NOT commit enterprise-specific CSVs, emails, or sensitive mappings. Use `invitation/customize/` and verify `.gitignore` coverage.
-
-## Diagnostics
-
-- Per-invite results are written to `invitation/reports/invitation_results.csv` with `Timestamp` and `Message` fields.
-- For 422 responses we log truncated messages in CSV and full JSON in debug logs.
-- Use retry tools for batch processing rate-limited failures.
-
-## Contributing
-
-- Add normalizers under `invitation/normalizers/` for public infrastructure
-- Add enterprise-specific implementations under `invitation/customize/<Enterprise>/`
-- Write tests under `tests/` and run with `pytest`
-- Follow the enterprise data security guidelines
+（本文档已依据最新讨论重写。）
 
