@@ -45,8 +45,21 @@ def login():
         return jsonify({'error': '用户名和密码不能为空', 'code': 'MISSING_CREDENTIALS'}), 400
     
     # Validate credentials
-    if (username == current_app.config['ADMIN_USERNAME'] and 
-        password == current_app.config['ADMIN_PASSWORD']):
+    # Get expected credentials
+    expected_username = current_app.config['ADMIN_USERNAME']
+    expected_password = current_app.config['ADMIN_PASSWORD']
+    
+    # Trim whitespace from inputs (Windows sometimes adds extra spaces)
+    username = username.strip() if username else ''
+    password = password.strip() if password else ''
+    
+    # Debug logging (in development mode only)
+    if current_app.config.get('ENV') == 'development':
+        current_app.logger.debug(f"Login attempt - Username: '{username}', Expected: '{expected_username}'")
+        current_app.logger.debug(f"Username match: {username == expected_username}")
+        current_app.logger.debug(f"Password match: {password == expected_password}")
+    
+    if (username == expected_username and password == expected_password):
         
         # Create session token
         session_mgr = SessionManager(
@@ -61,7 +74,11 @@ def login():
             'username': username
         }), 200
     else:
-        return jsonify({'error': '认证失败', 'code': 'AUTH_FAILED'}), 401
+        # Provide helpful error message in development
+        error_details = {'error': '认证失败', 'code': 'AUTH_FAILED'}
+        if current_app.config.get('ENV') == 'development':
+            error_details['hint'] = f'请使用正确的凭证。默认: username=admin, password=admin123'
+        return jsonify(error_details), 401
 
 
 @auth_bp.route('/password', methods=['POST'])
